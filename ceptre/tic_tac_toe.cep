@@ -1,0 +1,121 @@
+% Tic-tac-toe
+% TODO: test implementation
+% Comments:
+% stage name error crash during run time.
+% Seems to work now, but seems to start running slow
+% towards the end of the game.
+% go/draw is probably what causes slowdown.
+
+
+% Types of "objects"
+player : type.
+square : type.
+
+
+% Predicates
+turn player : pred.
+token player : pred.
+win player : pred.
+draw : pred.
+occupied player square : pred.
+free square : pred.
+full : pred.
+opp player player : bwd.
+row square square square : pred.
+
+% Stages, main game
+stage play = {
+play    
+    : turn A * free S * opp A B
+    -o occupied A S * token B.
+}
+#interactive play.
+
+go/win 
+    : qui * stage play -o stage win.
+
+stage win = {
+win % some options of how to implement this rule...
+    % consume the token so it doesn't go/play.
+    : row S1 S2 S3 * token B
+    * occupied A S1 * occupied A S2 * occupied A S3
+    -o win A.
+}
+
+go/play
+    : qui * stage win * $free S * token A * opp A B
+    -o stage play * turn A.
+    
+% for all squares: either A or B occupies it.
+% this rule is probably what causes slowdown.
+go/draw
+    : qui * stage win    
+    * occupied P1 S1 * occupied P2 S2 * occupied P3 S3
+    * occupied P4 S4 * occupied P5 S5 * occupied P6 S6
+    * occupied P7 S7 * occupied P8 S8 * occupied P9 S9
+    -o full * stage draw.
+
+stage draw = {
+draw 
+    : full -o draw.
+}
+
+% todo: encode: not free square -o full
+    
+
+% "Objects" / terms
+alice : player.
+bob : player.
+opp alice bob.
+opp bob alice.
+
+% Board
+sq1_1 : square.
+sq1_2 : square.
+sq1_3 : square.
+sq2_1 : square.
+sq2_2 : square.
+sq2_3 : square.
+sq3_1 : square.
+sq3_2 : square.
+sq3_3 : square.
+
+% Init to free
+context all_free = {
+free sq1_1,
+free sq1_2,
+free sq1_3,
+free sq2_1,
+free sq2_2,
+free sq2_3,
+free sq3_1,
+free sq3_2,
+free sq3_3
+}
+
+% Horizontal rows
+context rows = {
+row sq1_1 sq1_2 sq1_3,
+row sq2_1 sq2_2 sq2_3,
+row sq3_1 sq3_2 sq3_3
+}
+
+% Vertical rows (columns)
+context columns = {
+row sq1_1 sq2_1 sq3_1,
+row sq1_2 sq2_2 sq3_2,
+row sq1_3 sq2_3 sq3_3
+}
+
+% Diagonals
+context diagonals = {
+row sq1_1 sq2_2 sq3_3,
+row sq3_1 sq2_2 sq1_3
+}
+
+% Initial context
+context init =
+{turn alice}
+
+
+#trace _ play {init, rows, columns, diagonals, all_free}.

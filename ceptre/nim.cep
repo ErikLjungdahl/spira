@@ -1,0 +1,56 @@
+% Nim
+% Number representation not great to work with.
+% Lots of repeating "turn P * opp P P'"
+% Can the three move options be generalized?
+
+
+%%% For counting sticks. %%%
+nat : type.
+z : nat.
+s nat : nat.
+
+
+%%% How many sticks we have. %%
+sticks nat : pred.
+
+
+%%% Player / Turns. %%%
+player : type.
+alice : player.
+bob : player.
+
+opp player player : bwd. %vrf
+opp alice bob.
+opp bob alice.
+
+win player : pred.
+turn player : pred.
+
+
+%%% Main game rules. %%%
+stage rules {
+    takeOne     : turn P * opp P P'
+                * sticks (s N)
+                -o sticks N * turn P'.
+    
+    takeTwo     : turn P * opp P P'
+                * sticks (s (s N)) 
+                -o sticks N * turn P'.
+    
+    takeThree   : turn P * opp P P'
+                * sticks (s (s (s N))) 
+                -o sticks N * turn P'.
+    
+    win         : turn P
+                * sticks z -o win P.
+}
+#interactive rules.
+
+
+%%% Initialize with 21 sticks. %%%
+context init =
+{ turn alice, 
+  sticks (s (s (s (s (s (s (s (s (s (s (s (s (s (s (s (s (s (s (s (s (s z
+  ))))))))))))))))))))) }
+  
+#trace _ rules init.

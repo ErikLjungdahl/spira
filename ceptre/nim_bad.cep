@@ -1,0 +1,48 @@
+% Nim v2
+% this approach is bad because of the combinatorial explosion that occurs...
+% try running it to see...
+
+player : type.
+alice : player.
+bob : player.
+
+win player : pred.
+turn player : pred.
+
+opp player player : bwd. %vrf bwd
+opp alice bob.
+opp bob alice.
+
+stick : pred.
+
+
+stage main {
+    take/one : turn P * opp P P'
+            * stick 
+            -o turn P'.
+
+    take/two : turn P * opp P P'
+            * stick * stick
+            -o turn P'.
+            
+    take/three : turn P * opp P P'
+              * stick * stick * stick
+              -o turn P'.
+}
+#interactive main.
+qui * stage main -o stage win.
+
+
+stage win {
+    do/win : turn P -o win P.
+}
+
+
+context init = { turn alice
+    , stick, stick, stick, stick, stick, stick, stick
+    , stick, stick, stick, stick, stick, stick, stick
+    , stick, stick, stick, stick, stick, stick, stick
+}
+
+
+#trace _ main init.
