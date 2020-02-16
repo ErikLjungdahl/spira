@@ -1,0 +1,135 @@
+% Tic-tac-toe, using nats
+% TODO: test implementation
+% Comments:
+% different options for win conditions...
+% either general as currently.
+% or specific reference to Zero.
+% or at least for diagonals... since we already have two cases for these.
+
+
+% Types of "objects"
+player : type.
+
+% Natural numbers
+nat : type.
+z : nat.
+s nat : nat.
+
+% Predicates
+turn player : pred.
+token player : pred.
+win player : pred.
+draw : pred.
+occupied player nat nat : pred.
+free nat nat : pred. % Free X Y
+full : pred.
+opp player player : bwd.
+% row square square square : pred.
+
+% Stages, main game
+stage play = {
+play    
+    : turn A * free X Y * opp A B
+    -o occupied A X Y * token B.
+}
+#interactive play.
+
+go/win 
+    : qui * stage play -o stage win.
+
+stage win = {
+win/row % consume the token so it doesn't go/play.
+    : token B
+    * occupied A X Y            % some square
+    * occupied A (s X) Y        % square to the right
+    * occupied A (s (s X)) Y    % another square to the right
+    -o win A.
+win/column
+    : token B
+    * occupied A X Y            % some square
+    * occupied A X (s Y)        % square above
+    * occupied A X (s (s Y))    % another square above
+    -o win A.
+win/diagonal/up
+    : token B
+    * occupied A X Y
+    * occupied A (s X) (s Y)
+    * occupied A (s (s X)) (s (s Y))
+    -o win A.
+win/diagonal/down
+    : token B
+    * occupied A X (s (s Y))
+    * occupied A (s X) (s Y)
+    * occupied A (s (s X)) Y
+    -o win A.
+}
+
+go/play
+    : qui * stage win * $free X Y * token A * opp A B
+    -o stage play * turn A.
+    
+% for all squares: either A or B occupies it.
+% this rule is probably what causes slowdown.
+go/draw
+    : qui * stage win    
+    * occupied P1 X1 Y1 * occupied P2 X2 Y2 * occupied P3 X3 Y3
+    * occupied P4 X4 Y4 * occupied P5 X5 Y5 * occupied P6 X6 Y6
+    * occupied P7 X7 Y7 * occupied P8 X8 Y8 * occupied P9 X9 Y9
+    -o full * stage draw.
+
+stage draw = {
+draw 
+    : full -o draw.
+}
+
+% todo: encode: not free square -o full
+    
+
+% "Objects" / terms
+alice : player.
+bob : player.
+opp alice bob.
+opp bob alice.
+
+
+% Init board to free
+context all_free = {        % x,y
+free z z,                   % 0,0
+free z (s z),               % 0,1
+free z (s (s z)),           % 0,2
+free (s z) z,               % 1,0
+free (s z) (s z),           % 1,1
+free (s z) (s (s z)),       % 1,2
+free (s (s z)) z,           % 2,0
+free (s (s z)) (s z),       % 2,1
+free (s (s z)) (s (s z))    % 2,2
+}
+
+% Initial context
+context init =
+{turn alice}
+
+
+#trace _ play {init, all_free}.
+
+
+
+
+
+
+
+
+% alternative diagonal rules
+
+%win/diagonal/up
+%    : token B
+%    * occupied A z z
+%    * occupied A (s z) (s z)
+%    * occupied A (s (s z)) (s (s z))
+%    -o win A.
+%win/diagonal/down
+%    : token B
+%    * occupied A z (s (s z))
+%    * occupied A (s z) (s z)
+%    * occupied A (s (s z)) z
+%    -o win A.
