@@ -1,0 +1,69 @@
+% Rock paper scissors
+% TODO: test implementation
+% Comments:
+
+% Types of "objects"
+player : type.
+move : type.
+rock : move.
+paper : move.
+scissors : move.
+
+% Predicates
+turn player : pred.
+win player : pred.
+lose player : pred.
+token player : pred.
+pick player move : pred.
+is/move move : pred.        % bad hack... other solution?
+
+% Stages, main game
+stage game = {
+do/move
+    : turn A 
+    * $is/move Move
+    -o pick A Move * token A.
+}
+#interactive game.
+
+game_to_res
+    : qui * stage game
+    * token A * token B 
+    -o stage result.
+
+stage result = {
+win_rock
+    : pick A rock * pick B scissors
+    -o win A * lose B.
+win_paper
+    : pick A paper * pick B rock
+    -o win A * lose B.
+win_scissors
+    : pick A scissors * pick B paper
+    -o win A * lose B.
+draw
+    : pick A Move * pick B Move
+    -o turn A * turn B.
+}
+
+% If we're in result, apply rules automatically until no more rules in this stage.
+% Then go to stage "game"
+
+go_again_on_draw :
+    qui * stage result * $turn A * $turn B -o stage game.
+
+
+% "Objects" / terms
+alice : player.
+bob : player.
+
+
+% Initial context
+context init =
+{turn alice, turn bob
+, is/move rock
+, is/move paper
+, is/move scissors}.
+
+
+#trace _ game init.
