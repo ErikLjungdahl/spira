@@ -26,4 +26,6 @@ main = do
     let stageGame = Stage "game" (moves ["rock","scissor","paper"])
 
     write stageGame "game.cep"
-    --
+    -- Game2
+    -- let move = moves "game" ["rock","paper","scissor"]
+    -- write move "game.cep"
