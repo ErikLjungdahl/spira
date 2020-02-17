@@ -16,6 +16,10 @@ lose player : pred.
 token player : pred.
 pick player move : pred.
 is/move move : pred.        % bad hack... other solution?
+beats move move : bwd.
+beats rock scissors.
+beats scissors paper.
+beats paper rock.
 
 % Stages, main game
 stage game = {
@@ -32,14 +36,9 @@ game_to_res
     -o stage result.
 
 stage result = {
-win_rock
-    : pick A rock * pick B scissors
-    -o win A * lose B.
-win_paper
-    : pick A paper * pick B rock
-    -o win A * lose B.
-win_scissors
-    : pick A scissors * pick B paper
+win
+    : pick A MoveA * pick B MoveB
+    * beats MoveA MoveB
     -o win A * lose B.
 draw
     : pick A Move * pick B Move
@@ -48,9 +47,10 @@ draw
 
 % If we're in result, apply rules automatically until no more rules in this stage.
 % Then go to stage "game"
-
-go_again_on_draw :
-    qui * stage result * $turn A * $turn B -o stage game.
+go_again_on_draw
+    : qui * stage result 
+    * $turn A * $turn B
+    -o stage game.
 
 
 % "Objects" / terms
