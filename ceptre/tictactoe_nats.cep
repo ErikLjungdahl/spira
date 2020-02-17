@@ -23,8 +23,9 @@ draw : pred.
 occupied player nat nat : pred.
 free nat nat : pred. % Free X Y
 full : pred.
+not_full_yet : pred.
+restore nat nat : pred.
 opp player player : bwd.
-% row square square square : pred.
 
 % Stages, main game
 stage play = {
@@ -62,27 +63,26 @@ win/diagonal/down
     * occupied A (s X) (s Y)
     * occupied A (s (s X)) Y
     -o win A.
+check/draw
+    : not_full_yet
+    * free X Y
+    -o restore X Y.
 }
 
 go/play
-    : qui * stage win * $free X Y * token A * opp A B
-    -o stage play * turn A.
-    
-% for all squares: either A or B occupies it.
-% this rule is probably what causes slowdown.
+    : qui * stage win * token A * opp A B
+    * restore X Y
+    -o stage play * turn A * free X Y * not_full_yet.
+
 go/draw
     : qui * stage win    
-    * occupied P1 X1 Y1 * occupied P2 X2 Y2 * occupied P3 X3 Y3
-    * occupied P4 X4 Y4 * occupied P5 X5 Y5 * occupied P6 X6 Y6
-    * occupied P7 X7 Y7 * occupied P8 X8 Y8 * occupied P9 X9 Y9
+    * not_full_yet
     -o full * stage draw.
 
 stage draw = {
 draw 
     : full -o draw.
 }
-
-% todo: encode: not free square -o full
     
 
 % "Objects" / terms
@@ -110,7 +110,7 @@ context init =
 {turn alice}
 
 
-#trace _ play {init, all_free}.
+#trace _ play {init, all_free, not_full_yet}.
 
 
 
