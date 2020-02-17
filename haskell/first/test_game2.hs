@@ -4,6 +4,7 @@ import Game
 main :: IO ()
 main = do
     -- variables stuff
+    clearFile "game.cep"
     let preds = predicates ["turn"
                            ,"rock"
                            ,"paper"
@@ -22,8 +23,7 @@ main = do
                                          ,"lose"
                                          ,"token"]
     write prods "game.cep"
+    let stageGame = Stage "game" (moves ["rock","scissor","paper"])
 
-    -- 
-
-
-
+    write stageGame "game.cep"
+    --
