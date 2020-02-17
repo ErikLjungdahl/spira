@@ -1,0 +1,136 @@
+% 4 in a row
+% TODO: generalize win condition? (i.e. win row 5)
+% Comparison to tictactoe:
+% Almost the same
+% Play only allows to play in the bottom most available spot
+% This meant changes in semantics of "free square" (now current nat nat)
+% Because of the max height, we need comparison of nats
+% Win conditions almost exactly the same
+% Overall structure is the same
+
+% Natural numbers
+nat     : type.
+z       : nat.
+s   nat : nat.
+
+% x < y as less x y
+less nat nat : bwd.
+lessZ   : less z N.
+lessS   : less (s N) (s M)
+        <- less N M.
+
+% Player/Game related
+player                  : type.
+draw                    : pred.
+turn    player          : pred.
+token   player          : pred.
+win     player          : pred.
+opp     player  player  : bwd.
+
+% Square/board representation
+max                 nat : pred.
+current         nat nat : pred.    % col, row
+restore         nat nat : pred.
+occupied player nat nat : pred.
+
+% Needed for managing "draw"
+not_full_yet : pred.
+full         : pred.
+
+
+% Stages, main game
+stage play = {
+play    
+    : turn A * opp A B
+    * current X Y
+    * $max M                % New from tictactoe:
+    * less Y M              % Check that the column is not full
+    -o occupied A X Y 
+    * current X (s Y)
+    * token B.
+}
+#interactive play.
+
+go/win 
+    : qui * stage play -o stage win.
+
+stage win = {       % Consume the token so it doesn't go/play.
+win/row             % Check for 4 squares instead of 3 now.
+    : token B
+    * occupied A X Y
+    * occupied A (s X) Y
+    * occupied A (s (s X)) Y
+    * occupied A (s (s (s X))) Y
+    -o win A.
+win/column
+    : token B
+    * occupied A X Y
+    * occupied A X (s Y)
+    * occupied A X (s (s Y))
+    * occupied A X (s (s (s Y)))
+    -o win A.
+win/diagonal/up
+    : token B
+    * occupied A X Y
+    * occupied A (s X) (s Y)
+    * occupied A (s (s X)) (s (s Y))
+    * occupied A (s (s (s X))) (s (s (s Y)))
+    -o win A.
+win/diagonal/down
+    : token B
+    * occupied A X (s (s (s Y)))
+    * occupied A (s X) (s (s Y))
+    * occupied A (s (s X)) (s Y)
+    * occupied A (s (s (s X))) Y
+    -o win A.
+check/draw
+    : not_full_yet
+    * current X Y
+    * $max M            % New from tictactoe
+    * less Y M
+    -o restore X Y.
+}
+
+% Next turn
+go/play
+    : qui * stage win 
+    * token A * opp A B
+    * restore X Y
+    -o stage play * turn A 
+    * current X Y * not_full_yet.
+
+% We didn't manage to consume "not_full_yet", so the board must be full.
+go/draw
+    : qui * stage win    
+    * not_full_yet
+    -o full * stage draw.
+
+stage draw = {
+draw 
+    : full -o draw.
+}
+
+
+% "Objects" / terms
+alice : player.
+bob : player.
+opp alice bob.
+opp bob alice.
+
+% Init board to empty
+context all_free = {                % (x,y)
+current z z,                        % (0,0)
+current (s z) z,                    % (1,0)
+current (s (s z)) z,                % (2,0)
+current (s (s (s z))) z,            % (3,0)
+current (s (s (s (s z)))) z,        % (4,0)
+current (s (s (s (s (s z))))) z,    % (5,0)
+current (s (s (s (s (s (s z)))))) z % (6,0)
+}
+
+% Initial context
+context init =
+{turn alice, not_full_yet
+, max (s (s (s (s (s z)))))}
+
+#trace _ play {init, all_free}.
