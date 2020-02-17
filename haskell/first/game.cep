@@ -1,0 +1,7 @@
+turn player : pred.
+rock player : pred.
+paper player : pred.
+scissors player : pred.
+win player : pred.
+lose player : pred.
+token player : pred.

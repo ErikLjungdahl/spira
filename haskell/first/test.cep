@@ -1,0 +1,67 @@
+% Rock paper scissors
+% TODO: test implementation
+% Comments:
+% - lots of repetition in "result" stage
+% - should rock/paper/scissors really be types?
+% 
+
+% Types of "objects"
+player : type.
+
+
+% Predicates
+turn player : pred.
+rock player : pred.
+paper player : pred.
+scissors player : pred.
+win player : pred.
+lose player : pred.
+token player : pred.
+
+% Stages, main game
+stage game = {
+pick_rock
+    : turn A -o rock A * token A.
+pick_paper
+    : turn A -o paper A * token A.
+pick_scissors
+    : turn A -o scissors A * token A.
+}
+#interactive game.
+
+game_to_res :
+    qui * stage game * token A * token B -o stage result.
+
+stage result = {
+win_rock
+    : rock A * scissors B -o win A * lose B.
+win_paper
+    : paper A * rock B -o win A * lose B.
+win_scissors
+    : scissors A * paper B -o win A * lose B.
+draw_rock
+    : rock A * rock B -o turn A * turn B.
+draw_paper
+    : paper A * paper B -o turn A * turn B.
+draw_scissors
+    : scissors A * scissors B -o turn A * turn B.
+}
+
+% If we're in result, apply rules automatically until no more rules in this stage.
+% Then go to stage "game"
+
+go_again_on_draw :
+    qui * stage result * $turn A * $turn B -o stage game.
+
+
+% "Objects" / terms
+alice : player.
+bob : player.
+
+
+% Initial context
+context init =
+{turn alice, turn bob}.
+
+
+#trace _ game init.
