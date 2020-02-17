@@ -1,6 +1,5 @@
 import Game
 
-
 main :: IO ()
 main = do
     -- Variable stuff
@@ -31,3 +30,4 @@ main = do
     write players "game.cep"
 
     write Trace "game.cep" 
+
