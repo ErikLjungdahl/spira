@@ -31,4 +31,3 @@ main = do
     write players "game.cep"
 
     write Trace "game.cep" 
-
