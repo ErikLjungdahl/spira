@@ -1,31 +1,32 @@
 import Game
 
-
 main :: IO ()
 main = do
-    -- variables stuff
-    clearFile "game.cep"
-    let preds = predicates ["turn"
-                           ,"rock"
-                           ,"paper"
-                           ,"scissors"
-                           ,"win"
-                           ,"lose"
-                           ,"token"]
-    write preds "game.cep"
-
     -- Variable stuff
-    let prods = prodicates "player" ["turn"
-                                         ,"rock"
-                                         ,"paper"
-                                         ,"scissors"
-                                         ,"win"
-                                         ,"lose"
-                                         ,"token"]
-    write prods "game.cep"
-    let stageGame = Stage "game" (moves ["rock","scissor","paper"])
+    let t = createType ["player"]
+    write t "game.cep"
 
-    write stageGame "game.cep"
-    -- Game2
-    -- let move = moves "game" ["rock","paper","scissor"]
-    -- write move "game.cep"
+    let prods = prodicates "player" ["turn"
+                                    ,"rock"
+                                    ,"paper"
+                                    ,"scissor"
+                                    ,"win"
+                                    ,"lose"
+                                    ,"token"]
+    write prods "game.cep"
+
+    let move = moves "game" ["rock","paper","scissor"]
+    write move "game.cep"
+
+    let win = winCondition ["rock beats scissor"
+                           ,"paper beats rock"
+                           ,"scissor beats paper"
+                           ,"rock draws rock"
+                           ,"paper draws paper"
+                           ,"scissor draws scissor"]
+    write win "game.cep"
+
+    let players = generateTurn ["jennie", "peter"]
+    write players "game.cep"
+
+    write Trace "game.cep" 
