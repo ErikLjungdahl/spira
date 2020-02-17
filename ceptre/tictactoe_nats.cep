@@ -1,36 +1,38 @@
 % Tic-tac-toe, using nats
 % TODO: test implementation
 % Comments:
-% different options for win conditions...
-% either general as currently.
-% or specific reference to Zero.
-% or at least for diagonals... since we already have two cases for these.
+% Diagonals could be done using the specific values instead
+% of general form.
 
-
-% Types of "objects"
-player : type.
 
 % Natural numbers
-nat : type.
-z : nat.
-s nat : nat.
+nat     : type.
+z       : nat.
+s   nat : nat.
 
-% Predicates
-turn player : pred.
-token player : pred.
-win player : pred.
-draw : pred.
+% Player/Game related
+draw            : pred.
+player          : type.
+turn    player  : pred.
+token   player  : pred.
+win     player  : pred.
+opp     player  player  : bwd.
+
+% Square/board representation
+free            nat nat : pred.
+restore         nat nat : pred.
 occupied player nat nat : pred.
-free nat nat : pred. % Free X Y
-full : pred.
+
+% Needed for managing "draw"
+full         : pred.
 not_full_yet : pred.
-restore nat nat : pred.
-opp player player : bwd.
+
 
 % Stages, main game
 stage play = {
 play    
-    : turn A * free X Y * opp A B
+    : turn A * opp A B
+    * free X Y
     -o occupied A X Y * token B.
 }
 #interactive play.
@@ -38,8 +40,8 @@ play
 go/win 
     : qui * stage play -o stage win.
 
-stage win = {
-win/row % consume the token so it doesn't go/play.
+stage win = {       % Consume the token so it doesn't go/play.
+win/row
     : token B
     * occupied A X Y            % some square
     * occupied A (s X) Y        % square to the right
@@ -69,11 +71,15 @@ check/draw
     -o restore X Y.
 }
 
+% Next turn
 go/play
-    : qui * stage win * token A * opp A B
+    : qui * stage win 
+    * token A * opp A B
     * restore X Y
-    -o stage play * turn A * free X Y * not_full_yet.
+    -o stage play * turn A 
+    * free X Y * not_full_yet.
 
+% We didn't manage to consume "not_full_yet", so the board must be full.
 go/draw
     : qui * stage win    
     * not_full_yet
@@ -83,7 +89,7 @@ stage draw = {
 draw 
     : full -o draw.
 }
-    
+
 
 % "Objects" / terms
 alice : player.
@@ -91,26 +97,24 @@ bob : player.
 opp alice bob.
 opp bob alice.
 
-
 % Init board to free
-context all_free = {        % x,y
-free z z,                   % 0,0
-free z (s z),               % 0,1
-free z (s (s z)),           % 0,2
-free (s z) z,               % 1,0
-free (s z) (s z),           % 1,1
-free (s z) (s (s z)),       % 1,2
-free (s (s z)) z,           % 2,0
-free (s (s z)) (s z),       % 2,1
-free (s (s z)) (s (s z))    % 2,2
+context all_free = {               % (x,y)
+free    z          z,              % (0,0)
+free    z          (s z),          % (0,1)
+free    z          (s (s z)),      % (0,2)
+free    (s z)      z,              % (1,0)
+free    (s z)      (s z),          % (1,1)
+free    (s z)      (s (s z)),      % (1,2)
+free    (s (s z))  z,              % (2,0)
+free    (s (s z))  (s z),          % (2,1)
+free    (s (s z))  (s (s z))       % (2,2)
 }
 
 % Initial context
 context init =
-{turn alice}
+{turn alice, not_full_yet}
 
-
-#trace _ play {init, all_free, not_full_yet}.
+#trace _ play {init, all_free}.
 
 
 
@@ -120,7 +124,6 @@ context init =
 
 
 % alternative diagonal rules
-
 %win/diagonal/up
 %    : token B
 %    * occupied A z z
