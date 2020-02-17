@@ -2,32 +2,45 @@ module Game where
 
 
 -- Datatype for creating single predicates
-data Pred = Spred [String] | Tpred String [String] deriving Show
+data Game = Spred [String] 
+          | Tpred String [String] 
+          | Move [String]
+          | Stage String Game
+          deriving Show
 
 
 -- Write any string with \n function to the file
-write :: Pred -> FilePath -> IO ()
+write :: Game -> FilePath -> IO ()
 write pr fp = do
-    appendFile fp (createPreds pr)
+    appendFile fp (createGame pr)
 
 
 -- Creates single predicates
-predicates :: [String] -> Pred
+predicates :: [String] -> Game
 predicates xs = Spred xs
 
 
 -- Creates predicates with a type
-prodicates :: String -> [String] -> Pred
+prodicates :: String -> [String] -> Game
 prodicates t preds = Tpred t preds
 
 
+-- Create moves into a Stage
+moves :: String -> [String] -> Game
+moves name xs = Stage name $ Move xs
+
+
 -- Creates the string that are able to write to the file
-createPreds :: Pred -> String
-createPreds (Spred [])     = ""
-createPreds (Spred (x:xs)) = x ++ " : pred.\n" ++ createPreds (Spred xs)
-createPreds (Tpred t [])     = ""
-createPreds (Tpred t (x:xs)) = x ++ " " ++ t ++ " : pred.\n" ++ createPreds (Tpred t xs)
+createGame :: Game -> String
+createGame (Spred [])         = "\n"
+createGame (Spred (x:xs))     = x ++ " : pred.\n" ++ createGame (Spred xs)
+createGame (Tpred t [])       = "\n"
+createGame (Tpred t (x:xs))   = x ++ " " ++ t ++ " : pred.\n" ++ createGame (Tpred t xs)
+createGame (Stage str game)   = "stage " ++ str ++ " = {\n" ++ createString game ++ "}\n#interactive game.\n"
 
 
-
-
+-- Helper function for createGame 
+createString :: Game -> String
+createString (Move [])             = ""
+createString (Move (x:xs)) = "pick_" ++ x ++ "\n\t: turn A -o " 
+                              ++ x ++ " A * token A.\n" ++ (createString (Move xs))

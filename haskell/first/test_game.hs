@@ -23,7 +23,9 @@ main = do
                                          ,"token"]
     write prods "game.cep"
 
-    -- 
+    let move = moves "game" ["rock","paper","scissor"]
+    write move "game.cep"
 
+    -- 
 
 
