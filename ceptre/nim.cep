@@ -29,23 +29,31 @@ turn player : pred.
 
 %%% Main game rules. %%%
 stage rules {
-    takeOne     : turn P * opp P P'
-                * sticks (s N)
-                -o sticks N * turn P'.
-    
-    takeTwo     : turn P * opp P P'
-                * sticks (s (s N)) 
-                -o sticks N * turn P'.
-    
-    takeThree   : turn P * opp P P'
-                * sticks (s (s (s N))) 
-                -o sticks N * turn P'.
-    
-    win         : turn P
-                * sticks z -o win P.
+takeOne
+    : turn P * opp P P'
+    * sticks (s N)
+    -o sticks N * turn P'.
+takeTwo     
+    : turn P * opp P P'
+    * sticks (s (s N)) 
+    -o sticks N * turn P'.
+takeThree
+    : turn P * opp P P'
+    * sticks (s (s (s N))) 
+    -o sticks N * turn P'.
 }
 #interactive rules.
 
+go/win
+    : qui * stage rules
+    -o stage win.
+
+stage win {
+win
+    : turn P
+    * sticks z
+    -o win P.
+}
 
 %%% Initialize with 21 sticks. %%%
 context init =
