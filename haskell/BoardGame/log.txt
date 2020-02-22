@@ -1,0 +1,13 @@
+
+---- {(turn peter), (turn jennie), (stage game)}
+
+Applying transition (pick_scissor jennie)
+---- {(token jennie), (scissor jennie), (turn peter), (stage game)}
+
+Applying transition (pick_paper peter)
+---- {(token peter), (paper peter), (token jennie), (scissor jennie), (stage game)}
+
+---- {(stage result), (paper peter), (scissor jennie)}
+
+Applying transition (win_scissor jennie peter)
+---- {(lose peter), (win jennie), (stage result)}
