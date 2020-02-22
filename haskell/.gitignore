@@ -1,6 +1,8 @@
 
 # Generated ceptre files
 game.cep
+trace.dot
+log.txt
 
 
 # Haskell

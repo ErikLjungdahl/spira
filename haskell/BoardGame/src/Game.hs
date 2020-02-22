@@ -4,7 +4,13 @@ import Data.List.Split
 import Data.List
 import Control.Monad.Writer
 
+{- TODO maybe
+    * Implicitly create predicates according to the moves/rules
+        e.g this shouldn't be n
+    * Ordering of the rules shouldn't matter (Ceptre is order sensitive)
+    * Auto-add predicates that are always present, maybe "token", "player"
 
+-}
 -- Datatype for creating single predicates
 data Game = Spred [String]
           | Type [String]
@@ -14,7 +20,7 @@ data Game = Spred [String]
           | StageInteractive String Game
           | Stage String Game
           | Turn [String]
-          | Trace
+          | Trace String
           | And Game Game
           deriving Show
 
@@ -30,13 +36,6 @@ runGame g fp = do
     writeFile fp (ceptreOutput)
 
 
--- createGames :: [Game] -> M ()
--- createGames games = foldM (\_ g -> createGame g) () games
-
--- Write any string with \n function to the file
--- write :: Game -> FilePath -> IO ()
--- write pr fp = do
---     appendFile fp (createGame pr)
 
 --Combinator
 (&) :: Game -> Game -> Game
@@ -67,7 +66,8 @@ winCondition xs = Stage "result" $ Rule xs
 generateTurn :: [String] -> Game
 generateTurn xs = Turn xs
 
-
+trace :: String -> Game
+trace = Trace
 
 
 
@@ -81,22 +81,24 @@ createGame g =  case g of
     (Tpred t (x:xs))   -> do tell $ x ++ " " ++ t ++ " : pred.\n"
                              createGame (Tpred t xs)
     (Type [])          -> tell $ "\n"
-    (Type (x:xs))      -> tell (x ++ " : type.\n")
-                          >>= \_ -> createGame (Type xs)
+    (Type (x:xs))      -> do tell (x ++ " : type.\n")
+                             createGame (Type xs)
     (StageInteractive str game) -> tell $ "stage " ++ str ++ " = {\n"
                                 ++ createString game ++ "}\n#interactive game.\n\n"
     (Stage str game)   -> tell $ transition ++ "stage " ++ str ++ " = {\n" ++ createRules game ++ "}\n\n"
     (Turn xs)          -> tell $ createTurn xs
-    Trace              -> tell $ "#trace _ game init."
+    Trace name         -> tell $ "#trace _ " ++ name ++" init."
     And g1 g2 -> do
         createGame g1
         createGame g2
 
 -- The transition method for going into the stage result.
+-- TODO this function assumes that we have a token predicate
 transition :: String
 transition = "game_to_res :\n\tqui * stage game * token A * token B -o stage result.\n\n"
 
 -- Simply create the string for simultanious turns
+-- TODO this function assumes that we have a player predicate
 createTurn :: [String] -> String
 createTurn xs = head xs ++ " : player.\n" ++ last xs ++ " : player.\n\n"
     ++ "context init = \n" ++ "{turn " ++ head xs ++ ", turn " ++ last xs ++ "}.\n\n"
@@ -118,6 +120,7 @@ drawString :: String -> String -> String
 drawString s1 s2 = "\tdraw_" ++ s1 ++ "\n\t\t: " ++ s1 ++ " A * " ++ s2 ++ " B -o turn A * turn B."
 
 -- Helper function for createGame
+-- TODO this function assumes that we have a token predicate
 createString :: Game -> String
 createString (Move [])             = ""
 createString (Move (x:xs)) = "\tpick_" ++ x ++ "\n\t\t: turn A -o "
