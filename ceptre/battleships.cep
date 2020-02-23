@@ -1,0 +1,209 @@
+% Battle ships
+% Notes:
+% With this approach, lots of repetition.
+% Possible alternative:
+% Generate boats by using rollback on fail.
+
+% TODO: different types of "free" squares...
+% occupied by own's ship vs. occupied by miss
+% Maybe can ignore ship geometry past setup phase...
+% as long as they're setup as proper ships, it doesn't really matter.
+% But maybe want to preserve geometry.
+
+% Nats
+nat : type.
+z : nat.
+s nat : nat.
+
+% Player
+player : type.
+alice : player.
+bob : player.
+opp player player : bwd.
+opp alice bob.
+opp bob alice.
+
+% Board
+max/x nat : pred.
+max/y nat : pred.
+gen/y nat nat : pred.
+
+% On "player" board
+%coordinate : type.
+%pair nat nat : coordinate.
+hit player nat nat : pred.
+miss player nat nat : pred.
+guess player nat nat : pred.
+free player nat nat : pred.
+
+% Boats
+boat : type.
+nil  : boat.
+cons nat nat boat : boat.
+owns player boat : pred.
+
+% Misc
+token/boat player nat : pred. % Maybe need boat ID
+turn player : pred.
+token/turn player : pred.
+maybe/boat player : pred.
+has/boat player : pred.
+no/boat player : pred.
+win player : pred.
+
+stage init = {
+initfree/XZ
+    : max/x z
+    * $max/y Y
+    -o gen/y z Y.
+initfree/XS
+    : max/x (s X)
+    * $max/y Y
+    -o gen/y (s X) Y
+    * max/x X.
+initfree/YZ
+    : gen/y X z
+    -o free alice X z
+    * free bob X z.
+initfree/YS
+    : gen/y X (s Y)
+    -o free alice X (s Y)
+    * free bob X (s Y)
+    * gen/y X Y.
+}
+
+init_to_setup
+    : qui * stage init
+    -o stage setup.
+
+stage setup = {
+fill/Z
+    : token/boat P z
+    * free P X Y
+    -o owns P 
+    (cons X Y nil).
+fill/two/horizontal
+    : token/boat P (s z)
+    * free P X Y
+    * free P (s X) Y
+    -o owns P 
+    (cons (s X) Y
+    (cons X Y nil)).
+fill/two/vertical
+    : token/boat P (s z)
+    * free P X Y
+    * free P X (s Y)
+    -o owns P 
+    (cons X (s Y)
+    (cons X Y nil)).
+fill/three/horizontal
+    : token/boat P (s (s z))
+    * free P X Y
+    * free P (s X) Y
+    * free P (s (s X)) Y
+    -o owns P
+    (cons (s (s X)) Y
+    (cons (s X) Y
+    (cons X Y nil))).
+fill/three/vertical
+    : token/boat P (s (s z))
+    * free P X Y
+    * free P X (s Y)
+    * free P X (s (s Y))
+    -o owns P
+    (cons X (s (s Y))
+    (cons X (s Y)
+    (cons X Y nil))).
+}
+#interactive setup.
+
+setup_to_game
+    : qui * stage setup
+    -o stage game.
+
+stage game = {
+do/guess
+    : turn P
+    * opp P P'
+    * $free P' X Y
+    -o guess P' X Y
+    * token/turn P'.
+}
+#interactive game.
+
+game_to_hit
+    : qui * stage game
+    -o stage hit_stage.
+
+stage hit_stage = {
+confirm/hit
+    : $token/turn P
+    * opp P P'
+    * guess P X Y
+    * owns P (cons X Y Bs)
+    -o hit P X Y.
+cleanup/free
+    : $hit P X Y
+    * free P X Y
+    -o ().
+cleanup/boat
+    : owns P nil
+    -o ().
+}
+
+hit_to_miss
+    : qui * stage hit_stage
+    -o stage miss_stage.
+
+stage miss_stage = {
+confirm/miss
+    : $token/turn P
+    * opp P P'
+    * guess P X Y
+    * free P X Y
+    -o miss P X Y.
+}
+
+miss_to_win
+    : qui * stage miss_stage
+    -o stage boat_stage.
+
+stage boat_stage = {
+check/boat
+    : maybe/boat P
+    * $owns P Bs
+    -o has/boat P.
+}
+
+no_boat
+    : qui * stage boat_stage
+    * maybe/boat P
+    -o no/boat P
+    * stage win.
+
+go_next_round
+    : qui * stage boat_stage
+    * has/boat P * has/boat P'
+    * token/turn P
+    -o maybe/boat P * maybe/boat P'
+    * turn P
+    * stage game.
+
+stage win = {
+do/win
+    : no/boat P
+    * opp P P'
+    -o win P'.
+}
+
+context init = {
+max/x (s (s (s z)))
+,max/y (s (s (s z)))
+,token/boat alice (s z)
+,token/boat bob (s z)
+,turn alice
+,maybe/boat alice
+,maybe/boat bob
+}
+
+#trace _ init init.
