@@ -3,31 +3,31 @@ import Game
 main :: IO ()
 main = do
     -- Variable stuff
-    let t = createType ["player"]
-    write t "game.cep"
+  --  createType ["player"]
 
-    let prods = prodicates "player" ["turn"
-                                    ,"rock"
-                                    ,"paper"
-                                    ,"scissor"
-                                    ,"win"
-                                    ,"lose"
-                                    ,"token"]
-    write prods "game.cep"
+    createType ["player"]
+    
+  
+    --createPred "" ["turn","rock","paper","scissor","win","lose","token"]
 
-    let move = moves "game" ["rock","paper","scissor"]
-    write move "game.cep"
+    --let game = "game.cep"
 
-    let win = winCondition ["rock beats scissor"
-                           ,"paper beats rock"
-                           ,"scissor beats paper"
-                           ,"rock draws rock"
-                           ,"paper draws paper"
-                           ,"scissor draws scissor"]
-    write win "game.cep"
+    --write (createType ["player"]) game
 
-    let players = generateTurn ["jennie", "peter"]
-    write players "game.cep"
+    --write (prodicates "player" 
+--      ["turn","rock","paper","scissor","win","lose","token"]) 
+      --game
+    
+    --write (moves "game" ["rock","paper","scissor"]) game
 
-    write Trace "game.cep" 
+    --write winCondition (["rock beats scissor"
+     --                      ,"paper beats rock"
+       --                    ,"scissor beats paper"
+         --                  ,"rock draws rock"
+           --                ,"paper draws paper"
+             --              ,"scissor draws scissor"])
 
+    --let players = generateTurn ["jennie", "peter"]
+    --write players "game.cep"
+
+    --write Trace "game.cep" 
