@@ -16,7 +16,7 @@ player          : type.
 turn    player  : pred.
 token   player  : pred.
 win     player  : pred.
-opp     player  player  : bwd.
+opp     player  player  : bwd. % Typ som ett pred
 
 % Square/board representation
 free            nat nat : pred.
@@ -30,14 +30,14 @@ not_full_yet : pred.
 
 % Stages, main game
 stage play = {
-play    
+play
     : turn A * opp A B
     * free X Y
     -o occupied A X Y * token B.
 }
 #interactive play.
 
-go/win 
+go/win
     : qui * stage play -o stage win.
 
 stage win = {       % Consume the token so it doesn't go/play.
@@ -73,20 +73,20 @@ check/draw
 
 % Next turn
 go/play
-    : qui * stage win 
+    : qui * stage win
     * token A * opp A B
     * restore X Y
-    -o stage play * turn A 
+    -o stage play * turn A
     * free X Y * not_full_yet.
 
 % We didn't manage to consume "not_full_yet", so the board must be full.
 go/draw
-    : qui * stage win    
+    : qui * stage win
     * not_full_yet
     -o full * stage draw.
 
 stage draw = {
-draw 
+draw
     : full -o draw.
 }
 
