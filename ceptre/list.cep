@@ -21,29 +21,32 @@ nil                 : colors.
 cons color colors   : colors.
 colors colors       : pred.
 
+% Bwd using 'and'
 allyellow colors : bwd.
 allyellowZ  : allyellow nil.
 allyellowS  : allyellow (cons C Cs)
             <- allyellow Cs
             <- isyellow C.
 
-%existyellow colors : bwd.
-%existyellowZ    : existyellow nil.
-%existyellowS    : existyellow (cons C Cs)
-%                <- existyellow Cs
-%                <- isyellow C.
+% Bwd using 'or'
+existyellow colors : bwd.
+existyellowS    : existyellow (cons C Cs)
+                <- existyellow Cs.
+existyellowS2   : existyellow (cons C Cs)
+                <- isyellow C.
 
 check colors : pred.
 
 % TODO: check longer colors
-%       exists vs forall
-
 stage main = {
+% For all
 check/all
     : check Cs
     * allyellow Cs
     * ask/all
     -o is/all.
+
+% Generative existence check
 check/exist/yes
     : check (cons C Cs)
     * isyellow C
@@ -58,7 +61,14 @@ check/exist/nil
     : check nil
     * ask/exist
     -o not/exist.
+
+% Backwards chaining existence check
+check/exist/bwd
+    : check Cs
+    * existyellow Cs
+    * ask/exist
+    -o is/exist.
 }
 #interactive main.
 
-#trace _ main {ask/exist, check (cons red (cons red nil))}.
+#trace _ main {ask/exist, check (cons yellow (cons red nil))}.
