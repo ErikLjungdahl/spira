@@ -1,4 +1,4 @@
-module Ceptre_DSL where
+module Ceptre_DSL_Nim where
 
 -- Datatype for creating single predicates
 data Game = Player [String]
@@ -8,6 +8,7 @@ data Game = Player [String]
           | OppPlayer String String
           | Stage String Game
           | Move [String]
+          -- | ContextInit [String]
             deriving Show
 
 -- Write any string with \n function to the file
@@ -30,6 +31,9 @@ createOppPlayer x y = OppPlayer x y
 createStage :: String -> [String] -> Game
 createStage x xs = Stage x (Move xs)
 
+--createContextInit :: [String] -> Game
+--createContextInit xs = ContextInit xs
+
 -- Creates the string that are able to write to the file
 createGame :: Game -> String 
 createGame (CountSticks []) = ""
@@ -49,6 +53,9 @@ createGame (Pred (x:xs)) = x ++ " player : pred.\n" ++ createGame (Pred xs)
 
 createGame (Stage x (Move xs)) = "stage " ++ x ++ "{\n" ++ helpCreateStage xs ++ "}\n#interactive " ++ x ++ "."
 
+--createGame (ContextInit []) = ""
+--createGame (ContextInit xs) = "context init =\n{ " ++ xs ++ successor x s ++ "\n\n #trace _ rules init."
+
 helpCreateStage :: [String] -> String
 helpCreateStage [] = ""
 helpCreateStage (x:xs) = "\t" ++ x ++ "\t\t: turn P * opp P P'\n\t\t\t\t* sticks " ++ helpToDigits x ++ "\n\t\t\t-o sticks N * turn P'.\n\n" ++ helpCreateStage xs
@@ -58,7 +65,6 @@ helpToDigits (x)
     | x == "takeOne"   = "(s N)"
     | x == "takeTwo"   = "(s (s N))"
     | x == "takeThree" = "(s (s (s N)))"
-
 
 -- Helper function for counting sticks
 helpSticks :: [String] -> String
@@ -78,3 +84,9 @@ helpPlayer (x:xs) = x ++ " : player.\n" ++ helpPlayer xs
 -- Creates single predicates
 predicate :: [String] -> Game
 predicate xs = Pred xs
+
+successor :: Int -> String -> String
+successor x s = suc x s
+  where
+    suc 0 s = s
+    suc x s = "(s " ++ suc (x-1) s ++ ")"
