@@ -5,8 +5,9 @@ import sys
 def main():
 	is_start = True
 	is_finished = False
-	fp = sys.argv[1]
-	cmd = ['./ceptre-bin', fp]
+	fp_ceptre = sys.argv[1]
+	fp_game = sys.argv[2]
+	cmd = [fp_ceptre, fp_game]
 	p = subprocess.Popen(cmd, stdout=subprocess.PIPE, bufsize=1)
 	for line in iter(p.stdout.readline, ""):
 
@@ -23,7 +24,7 @@ def main():
 			is_finished = True
 			print(re.search(r"(?<=\bwin\s)(\w+)", line).group() + " won\n")
 
-		elif(re.match(r'\d: ',line)):
+		elif(re.match(r'\d*: ',line)):
 			print(modify(line).rstrip())
 
 		# Prints the line as it is but remove start and end
@@ -33,11 +34,10 @@ def main():
 	p.stdout.close()
 	p.wait()
 
-
 # Modifies the (s (s z)) -> int
 def modify(line):
 	tmp = re.sub(r"\([sz].*?\)", lambda m: str(m.group().count("s")), line)
-	return tmp.replace(")", "").replace("z","0")
+	return tmp.replace(")", "").replace(" z"," 0")
 
 # Where we add everything case we wont write out the line
 def dont_remove(line):
@@ -47,5 +47,3 @@ def dont_remove(line):
 		return True
 
 main()
-
-
