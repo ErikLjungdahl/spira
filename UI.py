@@ -16,14 +16,16 @@ def main():
 			is_start = False
 
 		# Removes the ?- line
-		elif(re.match('\?-',line)) :
-			print("")
+		elif(re.match(r'\?-',line)) :
+			print(line.rstrip()+"\n")
 
 		# Checks for the winner and print the name + won
-		elif(re.match('\{qui',line)):
-			is_finished = True
+		elif(re.match(r'\{qui',line)):
 			print(re.search(r"(?<=\bwin\s)(\w+)", line).group() + " won\n")
+			print(line)
+			is_finished = True
 
+		# changes the (s (s (s z)))
 		elif(re.match(r'\d*: ',line)):
 			print(modify(line).rstrip())
 
@@ -41,7 +43,7 @@ def modify(line):
 
 # Where we add everything case we wont write out the line
 def dont_remove(line):
-	if (re.match(r"Final",line)):
+	if (re.match(r"Trace:",line)):
 		return False
 	else : 
 		return True
