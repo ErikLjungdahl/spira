@@ -37,6 +37,7 @@ ticTacToe
     & predicates ["player","nat","nat"] ["occupied"]
     & preds ["full","not_full_yet"]
     -- TODO StageInteractive play
+    -- & moves "play" [freeCell]
     & winCondition "win"
         [ inARow 3
         , inAColumn 3
@@ -44,9 +45,13 @@ ticTacToe
         -- TODO Check/draw
         ]
     -- TODO go/play
+
     -- TODO go/draw
     -- TODO stage draw
-    -- TODO Objects
+    & typePredicates [] ["alice","bob"] "player"
+    -- TODO these predicates should be bwds
+    & predicates ["alice bob"] ["opp"]
+    & predicates ["bob alice"] ["opp"]
     -- TODO context allFree
     -- TODO context init
     & trace "play"
