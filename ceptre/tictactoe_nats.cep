@@ -31,9 +31,9 @@ not_full_yet : pred.
 % Stages, main game
 stage play = {
 play
-    : turn A * opp A B
+    : turn A % * opp A B % opp is not needed here.
     * free X Y
-    -o occupied A X Y * token B.
+    -o occupied A X Y * token A. % Token means that a player has played
 }
 #interactive play.
 
@@ -76,7 +76,7 @@ go/play
     : qui * stage win
     * token A * opp A B
     * restore X Y
-    -o stage play * turn A
+    -o stage play * turn B
     * free X Y * not_full_yet.
 
 % We didn't manage to consume "not_full_yet", so the board must be full.
