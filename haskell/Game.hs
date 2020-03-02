@@ -23,6 +23,7 @@ data Game = Spred [String]
           | Turn [String]
           | Trace String
           | And Game Game
+          | BoardContext Int Int
           | Nop
           deriving Show
 
@@ -64,19 +65,21 @@ players :: Int -> M ()
 players n = do
     add $ types ["player"]
     add $ preds ["draw"]
-    add $ predicates ["player"] ["turn","token","win"]
+    add $ predicates ["player"] ["turn","token","win","lose"] -- Remove lose?
     add $ typePredicates ["player","player"] ["opp"] "bwd"
     add $ typePredicates [] ["alice","bob"] "player"
     -- TODO these predicates should be bwds
-    add $ predicates ["alice bob"] ["opp"]
-    add $ predicates ["bob alice"] ["opp"]
+    --add $ predicates ["alice bob"] ["opp"]
+    --add $ predicates ["bob alice"] ["opp"]
+    
     --modify (\st -> st {init = "turn alice"
 
-board :: Int -> M ()
-board n = do
+board :: Int -> Int -> M ()
+board x y = do
     add $ predicates ["nat","nat"] ["free","restore"]
     add $ predicates ["player","nat","nat"] ["occupied"]
     add $ preds ["full","not_full_yet"]
+    add $ BoardContext x y
 
 runGame :: M () -> FilePath -> IO ()
 runGame g fp =
@@ -137,7 +140,7 @@ draws a b = drawString a b
 
 
 inARow :: Int -> String
-inARow n =  intercalate "\n\t" combined
+inARow n = '\t' : intercalate "\n\t\t" combined
     where
     begin    = "win/row"
     token    = ": token B"
@@ -146,7 +149,7 @@ inARow n =  intercalate "\n\t" combined
     combined = begin : token : occupied ++ [end]
 
 inAColumn :: Int -> String
-inAColumn n =  intercalate "\n\t" combined
+inAColumn n = '\t' : intercalate "\n\t\t" combined
     where
     begin    = "win/column"
     token    = ": token B"
@@ -166,8 +169,8 @@ inADiagonal n =  combined
                  ++ successor n' "X" ++ " " ++ successor (n-1-n') "Y"
                  | n' <- [0..n-1]]
     end      = "-o win A."
-    up   = intercalate "\n\t" $ (begin ++ "up")  : token : occupiedUp   ++ [end]
-    down = intercalate "\n\t" $ (begin ++ "down") : token : occupiedDown ++ [end]
+    up   = (:) '\t' $ intercalate "\n\t\t" $ (begin ++ "up")  : token : occupiedUp   ++ [end]
+    down = (:) '\t' $ intercalate "\n\t\t" $ (begin ++ "down") : token : occupiedDown ++ [end]
     combined = up ++ "\n" ++ down
 
 successor :: Int -> String -> String
@@ -176,10 +179,10 @@ successor x s = suc x s
     suc 0 s = s
     suc x s = "(s " ++ suc (x-1) s ++ ")"
 
-allFree :: Int -> String
-allFree x' = "context all_free = {" ++ generate (x'-1) (x'-1) ++ "}"
+allFree :: Int -> Int -> String
+allFree x' y' = "context all_free = {" ++ generate (x'-1) (y'-1) ++ "\n}"
   where
-    genStr x y = "\nfree\t" ++ successor x "z" ++ "\t" ++ successor y "z"
+    genStr x y = "\n\tfree\t" ++ successor x "z" ++ "\t" ++ successor y "z"
     generate x y
       | x == 0 && y == 0 = genStr x y
       | y == 0           = genStr x y ++ generate (x-1) (x'-1)
@@ -192,24 +195,28 @@ allFree x' = "context all_free = {" ++ generate (x'-1) (x'-1) ++ "}"
 
 -- Creates the string that are able to write to the file
 createGame :: Game -> MO ()
-createGame g =  case g of
+createGame g =
+    let tell'  = \s -> tell  (s ++ "\n")
+        tell'' = \s -> tell' (s ++ "\n")
+    in case g of
     Tpred as [] t       -> tell $ "\n"
-    Tpred as (x:xs) t    -> do tell $ x ++ " " ++ (intercalate " " as) ++ " : " ++ t ++ ".\n"
+    Tpred as (x:xs) t    -> do tell' $ x ++ " " ++ (intercalate " " as) ++ " : " ++ t ++ "."
                                createGame (Tpred as xs t)
     Type []          -> tell $ "\n"
-    Type (x:xs)      -> do tell (x ++ " : type.\n")
+    Type (x:xs)      -> do tell' (x ++ " : type.")
                            createGame (Type xs)
-    StageInteractive str game -> tell $ "stage " ++ str ++ " = {\n"
-                                      ++ createString game ++ "}\n#interactive game.\n\n"
-    Stage str rules   -> tell $ transition ++ "stage " ++ str ++ " = {\n"
+    StageInteractive str game -> tell'' $ "stage " ++ str ++ " = {\n"
+                                      ++ createString game ++ "}\n#interactive game."
+    Stage str rules   -> tell'' $ transition ++ "stage " ++ str ++ " = {\n"
                               ++ (intercalate "\n" rules)
-                              ++ "\n}\n\n"
-    Turn xs          -> tell $ createTurn xs
-    Trace name         -> tell $ "#trace _ " ++ name ++" init."
+                              ++ "\n}"
+    Turn xs          -> tell' $ createTurn xs
+    Trace name         -> tell' $ "#trace _ " ++ name ++" init."
     And g1 g2 -> do
         createGame g1
         createGame g2
     Nop -> return ()
+    BoardContext x y -> tell'' $ allFree x y
 
 -- The transition method for going into the stage result.
 -- TODO this function assumes that we have a token predicate
