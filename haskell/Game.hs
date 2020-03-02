@@ -3,6 +3,7 @@ module Game where
 import Data.List.Split
 import Data.List
 import Control.Monad.Writer
+import Control.Monad.State
 
 {- TODO maybe
     * Implicitly create predicates according to the moves/rules
@@ -22,24 +23,80 @@ data Game = Spred [String]
           | Turn [String]
           | Trace String
           | And Game Game
+          | Nop
           deriving Show
 
 
 
 type Output = String
 
-type M a = Writer Output a
+type MO a = Writer Output a
 
-runGame :: Game -> FilePath -> IO ()
-runGame g fp = do
-    let (res, ceptreOutput) = runWriter (createGame g)
-    writeFile fp (ceptreOutput)
+--data Pred = Pred String
+
+data St = St
+    { preds' :: Pred
+    , game :: Game
+    , inits' :: Game
+    }
+
+type Pred = Game
+
+type M a = State St a
+
+newPred :: String -> M Pred
+newPred s = do
+    let p = Spred [s]
+    modify (\st -> st { preds' = preds' st & p})
+    return p
+
+add :: Game -> M ()
+add g = do
+    modify (\st -> st { game = game st & g})
+
+numbers :: M ()
+numbers = add $
+      types ["nat"] -- Remove later?
+    & typePredicates [] ["z"] "nat" -- Remove later?
+    & typePredicates ["nat"] ["s"] "nat"
+
+players :: Int -> M ()
+players n = do
+    add $ types ["player"]
+    add $ preds ["draw"]
+    add $ predicates ["player"] ["turn","token","win"]
+    add $ typePredicates ["player","player"] ["opp"] "bwd"
+    add $ typePredicates [] ["alice","bob"] "player"
+    -- TODO these predicates should be bwds
+    add $ predicates ["alice bob"] ["opp"]
+    add $ predicates ["bob alice"] ["opp"]
+    --modify (\st -> st {init = "turn alice"
+
+board :: Int -> M ()
+board n = do
+    add $ predicates ["nat","nat"] ["free","restore"]
+    add $ predicates ["player","nat","nat"] ["occupied"]
+    add $ preds ["full","not_full_yet"]
+
+runGame :: M () -> FilePath -> IO ()
+runGame g fp =
+    let (res, ceptreOutput) = runWriter (createGame (preds' state & game state))
+        (_, state) = runState g initSt
+        initSt = St
+            { preds' = Nop
+            , game = Nop
+            , inits' = Nop
+            }
+    in writeFile fp (ceptreOutput)
 
 
+end :: M ()
+end = add $ trace "play"
 
 --Combinator
 (&) :: Game -> Game -> Game
 g1 & g2 = g1 `And` g2
+
 
 
 --Create types
@@ -134,7 +191,7 @@ allFree x' = "context all_free = {" ++ generate (x'-1) (x'-1) ++ "}"
 
 
 -- Creates the string that are able to write to the file
-createGame :: Game -> M ()
+createGame :: Game -> MO ()
 createGame g =  case g of
     Tpred as [] t       -> tell $ "\n"
     Tpred as (x:xs) t    -> do tell $ x ++ " " ++ (intercalate " " as) ++ " : " ++ t ++ ".\n"
@@ -152,6 +209,7 @@ createGame g =  case g of
     And g1 g2 -> do
         createGame g1
         createGame g2
+    Nop -> return ()
 
 -- The transition method for going into the stage result.
 -- TODO this function assumes that we have a token predicate
