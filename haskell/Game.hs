@@ -111,8 +111,6 @@ end = add $ trace "play"
 (&) :: Game -> Game -> Game
 g1 & g2 = g1 `And` g2
 
-
-
 --Create types
 types :: [String] -> Game
 types xs = Type xs
@@ -234,6 +232,7 @@ createGame g =
     BoardContext x y -> tell'' $ allFree x y
     Win  (Pred tx (x:_) _) (Pred ty (y:_) _) -> tell' $ winString x y
     Draw (Pred tx (x:_) _) (Pred ty (y:_) _) -> tell' $ drawString x y
+    Rule string -> tell' string
 
 -- The transition method for going into the stage result.
 -- TODO this function assumes that we have a token predicate

@@ -28,7 +28,7 @@ rockPaperScissor = do
           ,paper   `draws` paper
           ,scissor `draws` scissor]
 
-    -- TODO  make these nicer  
+    -- TODO  make these nicer
     add $ generateTurn ["jennie", "peter"]
     add $ trace "game"
 
@@ -49,7 +49,6 @@ ticTacToe = do
         , inADiagonal 3
         ]
     -- TODO go/play
-
     -- TODO go/draw
     -- TODO stage draw
 
