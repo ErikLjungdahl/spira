@@ -5,25 +5,30 @@ main :: IO ()
 main = runGame rockPaperScissor "game.cep"
 
 
+-- Currently based on "rockPaperScissor.cep"
+-- TODO base on "rockPaperScissor2.cep"
 rockPaperScissor :: M ()
 rockPaperScissor = do
---     do
---         player  <- newPlayer "player"
---         scissor <- newPred player "scissor"
-    players 2
 
-    -- TODO extract the predicates from the moves/wincondition?
-    add $ predicates ["player"] ["rock","paper","scissor"]
-    
-    add $ moves "game" ["rock","paper","scissor"]
+    players 2 -- TODO return playertype to be used later
+    -- playerType <- players 2
+    -- TODO make "player" typesafe
+    rock <- newPred "player" "rock"
+    paper <- newPred "player" "paper"
+    scissor <- newPred "player" "scissor"
+
+    -- add $ predicates ["player"] ["rock","paper","scissor"]
+
+    add $ moves "game" [rock,paper,scissor]
     add $ winCondition "result"
-          ["rock"    `beats` "scissor"
-          ,"paper"   `beats` "rock"
-          ,"scissor" `beats` "paper"
-          ,"rock"    `draws` "rock"
-          ,"paper"   `draws` "paper"
-          ,"scissor" `draws` "scissor"]
+          [rock    `beats` scissor
+          ,paper   `beats` rock
+          ,scissor `beats` paper
+          ,rock    `draws` rock
+          ,paper   `draws` paper
+          ,scissor `draws` scissor]
 
+    -- TODO  make these nicer  
     add $ generateTurn ["jennie", "peter"]
     add $ trace "game"
 
