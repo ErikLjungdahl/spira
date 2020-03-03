@@ -100,8 +100,6 @@ end = add $ trace "play"
 (&) :: Game -> Game -> Game
 g1 & g2 = g1 `And` g2
 
-
-
 --Create types
 types :: [String] -> Game
 types xs = Type xs
@@ -199,19 +197,19 @@ createGame g =
     let tell'  = \s -> tell  (s ++ "\n")
         tell'' = \s -> tell' (s ++ "\n")
     in case g of
-    Tpred as [] t       -> tell $ "\n"
+    Tpred as [] t        -> tell $ "\n"
     Tpred as (x:xs) t    -> do tell' $ x ++ " " ++ (intercalate " " as) ++ " : " ++ t ++ "."
                                createGame (Tpred as xs t)
-    Type []          -> tell $ "\n"
-    Type (x:xs)      -> do tell' (x ++ " : type.")
+    Type []              -> tell $ "\n"
+    Type (x:xs)          -> do tell' (x ++ " : type.")
                            createGame (Type xs)
     StageInteractive str game -> tell'' $ "stage " ++ str ++ " = {\n"
                                       ++ createString game ++ "}\n#interactive game."
-    Stage str rules   -> tell'' $ transition ++ "stage " ++ str ++ " = {\n"
+    Stage str rules      -> tell'' $ transition ++ "stage " ++ str ++ " = {\n"
                               ++ (intercalate "\n" rules)
                               ++ "\n}"
-    Turn xs          -> tell' $ createTurn xs
-    Trace name         -> tell' $ "#trace _ " ++ name ++" init."
+    Turn xs              -> tell' $ createTurn xs
+    Trace name           -> tell' $ "#trace _ " ++ name ++" init."
     And g1 g2 -> do
         createGame g1
         createGame g2

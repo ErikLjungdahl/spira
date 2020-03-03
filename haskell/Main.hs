@@ -2,7 +2,7 @@ import Game
 import Control.Monad.State
 
 main :: IO ()
-main = runGame rockPaperScissor "game.cep"
+main = runGame ticTacToe "game.cep"
 
 
 rockPaperScissor :: M ()
@@ -44,7 +44,6 @@ ticTacToe = do
         , inADiagonal 3
         ]
     -- TODO go/play
-
     -- TODO go/draw
     -- TODO stage draw
 
