@@ -2,7 +2,7 @@ import Game
 import Control.Monad.State
 
 main :: IO ()
-main = runGame rockPaperScissor "game.cep"
+main = runGame ticTacToe "game.cep"
 
 
 -- Currently based on "rockPaperScissor.cep"
@@ -11,11 +11,11 @@ rockPaperScissor :: M ()
 rockPaperScissor = do
 
     players 2 -- TODO return playertype to be used later
-    -- playerType <- players 2
+    player <- players 2
     -- TODO make "player" typesafe
-    rock <- newPred "player" "rock"
-    paper <- newPred "player" "paper"
-    scissor <- newPred "player" "scissor"
+    rock <- newPred player "rock"
+    paper <- newPred player "paper"
+    scissor <- newPred player "scissor"
 
     -- add $ predicates ["player"] ["rock","paper","scissor"]
 
@@ -26,7 +26,8 @@ rockPaperScissor = do
           ,scissor `beats` paper
           ,rock    `draws` rock
           ,paper   `draws` paper
-          ,scissor `draws` scissor]
+          ,scissor `draws` scissor
+          ]
 
     -- TODO  make these nicer
     add $ generateTurn ["jennie", "peter"]
@@ -38,11 +39,10 @@ rockPaperScissor = do
 
 ticTacToe :: M ()
 ticTacToe = do
-    numbers
-    players 2
+    player <- players 2
     -- TODO StageInteractive play
     -- add $ moves "play" [freeCell]
-    board 3 3
+    board 4 4 player
     add $ winCondition "win"
         [ inARow 3
         , inAColumn 3

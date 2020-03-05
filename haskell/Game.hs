@@ -13,8 +13,8 @@ import Control.Monad.State
 
 -}
 -- Datatype for creating single predicates
-data Game = Type [String]
-          | Pred [String] [String] String
+data Game = Type String
+          | Pred [Type] [String] Type
           -- | Move [String]
           | Rule String -- String is already in ceptre. Pretty hard coded
           | StageInteractive String [Game]
@@ -27,7 +27,6 @@ data Game = Type [String]
           | Draw Pred Pred
           | Nop
           deriving Show
-
 
 
 type Output = String
@@ -59,12 +58,18 @@ runGame g fp =
             }
     in writeFile fp (ceptreOutput)
 
-type Type = String
+type Type = Game
 
 newPred :: Type -> String -> M Pred
 newPred t s = do
     let p = predicates [t] [s]
-    modify (\st -> st { preds' = preds' st & p})
+    addPred p
+    return p
+
+newType :: String -> M Type
+newType t = do
+    let p = type' t
+    addPred p
     return p
 
 
@@ -72,33 +77,40 @@ add :: Game -> M ()
 add g = do
     modify (\st -> st { game = game st & g})
 
-addPred :: Game -> M ()
+addPred :: Pred -> M ()
 addPred g = do
     modify (\st -> st { preds' = preds' st & g})
 
-numbers :: M ()
-numbers = add $
-      types ["nat"] -- Remove later?
-    & typePredicates [] ["z"] "nat" -- Remove later?
-    & typePredicates ["nat"] ["s"] "nat"
+numbers :: M Type
+numbers = do
+    nat <- newType "nat"
+    addPred $ typePredicates [] ["z"] nat
+    addPred $ typePredicates [nat] ["s"] nat
+    return nat
 
-players :: Int -> M ()
+bwd :: Type
+bwd = Type "bwd"
+
+players :: Int -> M Type
 players n = do
-    addPred $ types ["player"]
-    addPred $ preds ["draw"]
-    addPred $ predicates ["player"] ["turn","token","win","lose"] -- Remove lose?
-    addPred $ typePredicates ["player","player"] ["opp"] "bwd"
-    addPred $ typePredicates [] ["alice","bob"] "player"
+    player <- newType "player"
+    --bwd <- newType "bwd"
+    --addPred $ preds ["draw"]
+    addPred $ predicates [player] ["turn","token","win","lose"] -- Remove lose?
+    addPred $ typePredicates [player,player] ["opp"] bwd
+    addPred $ typePredicates [] ["alice","bob"] player
     -- TODO these predicates should be bwds
     --add $ predicates ["alice bob"] ["opp"]
     --add $ predicates ["bob alice"] ["opp"]
 
     --modify (\st -> st {init = "turn alice"})
+    return player
 
-board :: Int -> Int -> M ()
-board x y = do
-    addPred $ predicates ["nat","nat"] ["free","restore"]
-    addPred $ predicates ["player","nat","nat"] ["occupied"]
+board :: Int -> Int -> Type -> M ()
+board x y playertype = do
+    nat <- numbers
+    addPred $ predicates [nat,nat] ["free"]
+    addPred $ predicates [playertype,nat,nat] ["occupied"]
     addPred $ preds ["full","not_full_yet"]
     add $ BoardContext x y
 
@@ -107,23 +119,19 @@ board x y = do
 end :: M ()
 end = add $ trace "play"
 
---Combinator
-(&) :: Game -> Game -> Game
-g1 & g2 = g1 `And` g2
-
---Create types
-types :: [String] -> Game
-types xs = Type xs
+--Create type'
+type' :: String -> Game
+type' xs = Type xs
 
 preds :: [String] -> Game
 preds = predicates []
 
 -- Creates predicates with a type
-predicates :: [String] -> [String] -> Game
-predicates ts preds = Pred ts preds "pred"
+predicates :: [Type] -> [String] -> Game
+predicates ts preds = Pred ts preds (Type "pred")
 
 -- Creates predicates with a type
-typePredicates :: [String] -> [String] -> String -> Game
+typePredicates :: [Type] -> [String] -> Type -> Game
 typePredicates as preds t = Pred as preds t
 
 -- Create moves into a StageInteractive
@@ -211,11 +219,11 @@ createGame g =
         tell'' = \s -> tell' (s ++ "\n")
     in case g of
     Pred as [] t       -> tell $ "\n"
-    Pred as (x:xs) t    -> do tell' $ x ++ " " ++ (intercalate " " as) ++ " : " ++ t ++ "."
-                              createGame (Pred as xs t)
-    Type []          -> tell $ "\n"
-    Type (x:xs)      -> do tell' (x ++ " : type.")
-                           createGame (Type xs)
+    Pred as (x:xs) (Type t)    -> let as' = map (\(Type a) -> a) as
+        in do
+            tell' $ x ++ " " ++ (intercalate " " as') ++ " : " ++ t ++ "."
+            createGame (Pred as xs (Type t))
+    Type x      -> do tell' (x ++ " : type.")
     StageInteractive str preds -> tell'' $ "stage " ++ str ++ " = {\n"
                                       ++ concatMap createString preds ++ "}\n#interactive game."
     Stage str rules   -> do
@@ -259,3 +267,8 @@ drawString s1 s2 = "\tdraw_" ++ s1 ++ "\n\t\t: " ++ s1 ++ " A * " ++ s2 ++ " B -
 createString :: Game -> String
 createString (Pred _ (x:_) _ ) =  "\tpick_" ++ x ++ "\n\t\t: turn A -o "
                                ++ x ++ " A * token A.\n"
+
+
+--Combinator
+(&) :: Game -> Game -> Game
+g1 & g2 = g1 `And` g2
