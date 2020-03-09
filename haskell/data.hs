@@ -1,3 +1,4 @@
+module Data where
 
 data Game = Stage StagePred [Implication ApplyPred] -- "stage " ++ Stagepred ++ ...
           | Transition Name (Implication ApplyPredOrStage)
@@ -22,5 +23,6 @@ data Initial = Initial
 
 type Name = String
 newtype Type = Type Name -- Det som användaren genererar.
+
 data Var = Var Name Type
 type Val = String
