@@ -1,6 +1,5 @@
 module Data where
 
-
 data Game = Stage Name [Implication] -- "stage " ++ Stagepred ++ ...
           | Transition Name Implication
           deriving (Show)
@@ -9,7 +8,7 @@ data Game = Stage Name [Implication] -- "stage " ++ Stagepred ++ ...
 data Implication = Implication [Pred] [Pred] -- Basically -o (lolli) between the two lists
               deriving (Show)
 
-data Pred = Pred Name [Type]
+data Pred = Pred Name [Type] Type
           | Bwd Name [Type]
           | StagePred Name
           | ApplyPred Pred [Pred] -- Pred (1)  -- Pred (2) should be a Var
