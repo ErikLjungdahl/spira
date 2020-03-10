@@ -13,27 +13,27 @@ type Output = String
 type O a = Writer Output a
 
 data St = St
-    { preds :: [Pred]
-    , constructor :: [Constructor]
-    , game :: [Game]
+    { types  :: [Type]
+    , preds  :: [Pred]
+    , consts :: [Constructor]
+    , games  :: [Game]
     , inits' :: Initial
-    , types :: [Type]
     }
 
 type M a = State St a
 
 runGame :: M () -> FilePath -> IO ()
 runGame g fp =
-    --let (res, ceptreOutput) = runWriter (createGame (preds' state & game state))
-    let
+    let (res, ceptreOutput) = runWriter (createGameFromSt state)
         (_, state) = runState g initSt
         initSt = St
             { preds = []
-            , game = []
+            , games = []
             --, inits' =
             , types = []
+            , consts = []
             }
-    in writeFile fp (show (preds state) ++ show (types state) ++ show (game state) )
+    in writeFile fp ceptreOutput
 
 newPred :: String -> M Pred
 newPred s = undefined
@@ -44,7 +44,7 @@ newPred s = undefined
 newConstructor :: Name -> [Type] -> Type -> M Constructor
 newConstructor s xt t = do
     let c = Constructor s xt t
-    modify (\st -> st { constructor = c : constructor st})
+    modify (\st -> st { consts = c : consts st})
     return c
 
 
@@ -63,7 +63,7 @@ newType t = do
 
 addGame :: Game -> M ()
 addGame g = do
-    modify (\st -> st { game = g : game st })
+    modify (\st -> st { games = g : games st })
 
 addPred :: Pred -> M ()
 addPred g = do
@@ -97,19 +97,62 @@ createGameFromSt :: St -> O ()
 createGameFromSt st = do
     createTypes (reverse $ types st)
     createPreds (reverse $ preds st)
+    createConsts (reverse $ consts st)
 
 
 createTypes :: [Type] -> O ()
-createTypes ts = mapM_ (\(Type name) -> tell $ name ++ " : type.") ts
+createTypes ts = mapM_ (\(Type name) -> tell' $ name ++ " : type.") ts
+
+
 
 createPreds :: [Pred] -> O ()
 createPreds = mapM_ createPred
     where
         createPred :: Pred -> O ()
         createPred = \case
-            Pred name ts ->
-                let ts' = map (\(Type a) -> a) ts
-                in tell' $ name ++ ' ':(intercalate " " ts') ++ " : pred."
+            Pred name ts -> helper name ts "pred"
+            Bwd name ts -> helper name ts "bwd"
+            StagePred _ -> error "You can't initialize a StagePred, don't put it in the state"
+            ApplyPred _ _ -> error "You can't apply a predicate to a variable in the top level"
+
+
+helper :: Name -> [Type] -> Name -> O ()
+helper name ts right =
+    let ts' = map (\(Type a) -> a) ts
+    in tell' $ name ++ ' ':(intercalate " " ts') ++ " : " ++ right ++"."
+
+createConsts :: [Constructor] -> O ()
+createConsts cs = mapM_ (\(Constructor n ts t) ->
+                            helper n ts (show t))
+                        cs
+
+createGames :: [Game] -> O ()
+createGames = mapM_ createGame
+    where
+        createGame :: Game -> O ()
+        createGame = \case
+            Stage n impls -> undefined
+
+        createImplication (Implication ls rs) =
+            let
+            left = map implPred ls
+            right = map implPred rs
+            combined = intercalate " * " left
+                    ++ " -o "
+                    ++ intercalate " * " right
+            implPred = \case
+                Pred n ts -> if ts == [] then n
+                    else error "Predicate needs to be applied to vars"
+                Bwd n ts  -> if ts == [] then n
+                    else error "bwd needs to be applied to vars"
+                StagePred n -> "stage " ++ n
+                ApplyPred pred vars -> case pred of
+                    Pred n ts -> undefined
+                    Bwd  n ts -> undefined
+                    StagePred _-> error "Can't apply something to a Stage predicate"
+                    -- TODO Can this be supported? Does it make sense?
+                    ApplyPred _ _-> error "Applying something to an already applied thing isn't supported"
+            in undefined
 
 
 -- createGame :: Game -> O ()

@@ -28,7 +28,9 @@ data Initial = Initial
 
 type Name = String
 data Type = Type Name -- Det som användaren genererar.
-          deriving (Show)
+    deriving (Eq)
+instance Show Type where
+    show (Type s) = s
 
 -- type Val = String
 
