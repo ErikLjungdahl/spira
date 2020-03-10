@@ -1,6 +1,5 @@
 module Data where
 
-
 data Game = Stage Name [Implication] -- "stage " ++ Stagepred ++ ...
           | Transition Name Implication
           deriving (Show)
