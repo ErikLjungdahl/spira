@@ -12,10 +12,15 @@ data Implication = Implication [Pred] [Pred] -- Basically -o (lolli) between the
 data Pred = Pred Name [Type]
           | Bwd Name [Type]
           | StagePred Name
-          | ApplyPred Pred [Pred] -- Pred (1)  -- Pred (2) should be a Var
-          | Var Name Type
+          | ApplyPred Pred [Var]
         deriving (Show)
 
+data Var = Pattern Name Type
+         | AVar Constructor [Var]
+         deriving (Show)
+
+data Constructor = Constructor Name [Type] Type -- ex: s nat : nat , z : nat
+    deriving (Show)
 
 data Initial = Initial
                     Name -- StagePred Initial stage
@@ -26,7 +31,6 @@ type Name = String
 data Type = Type Name -- Det som användaren genererar.
           deriving (Show)
 
--- data Var = Var Name Type
 -- type Val = String
 
 -- data ApplyPred = ApplyPred Pred [Var]
