@@ -92,6 +92,8 @@ tell' :: String -> O ()
 tell'  = \s -> tell  (s ++ "\n")
 tell'' :: String -> O ()
 tell'' = \s -> tell' (s ++ "\n")
+tell_ :: String -> O ()
+tell_ = \s -> tell (s ++ " ")
 
 createGameFromSt :: St -> O ()
 createGameFromSt st = do
@@ -131,28 +133,55 @@ createGames = mapM_ createGame
     where
         createGame :: Game -> O ()
         createGame = \case
-            Stage n impls -> undefined
-
-        createImplication (Implication ls rs) =
+            Stage n impls -> do
+                tell' $ "stage " ++ n ++ " = {"
+                mapM_ (uncurry createImplication)
+                      (zip impls
+                           (map (\i -> n ++ '/' : show i) [1..]) )
+                tell' "}"
+        createImplication :: Implication -> String -> O ()
+        createImplication (Implication ls rs) ident =
             let
-            left = map implPred ls
-            right = map implPred rs
-            combined = intercalate " * " left
-                    ++ " -o "
-                    ++ intercalate " * " right
+            implPred :: Pred -> O ()
             implPred = \case
-                Pred n ts -> if ts == [] then n
+                Pred n ts -> if ts == [] then tell n
                     else error "Predicate needs to be applied to vars"
-                Bwd n ts  -> if ts == [] then n
+                Bwd n ts  -> if ts == [] then tell n
                     else error "bwd needs to be applied to vars"
-                StagePred n -> "stage " ++ n
+                StagePred n -> tell $ "stage " ++ n
                 ApplyPred pred vars -> case pred of
-                    Pred n ts -> undefined
-                    Bwd  n ts -> undefined
+                    Pred n ts -> applyPreds' n ts vars
+                    Bwd  n ts -> applyPreds' n ts vars
                     StagePred _-> error "Can't apply something to a Stage predicate"
                     -- TODO Can this be supported? Does it make sense?
                     ApplyPred _ _-> error "Applying something to an already applied thing isn't supported"
-            in undefined
+
+            applyPreds' n ts vars = do
+                when (length ts /= length vars) $ error "Wrong number of vars applied to a pred"
+                tell n
+                zipWithM checkVar ts vars
+                return ()
+
+            checkVar :: Type -> Var -> O ()
+            checkVar t = \case
+                Pattern n tp ->
+                    if (t /= tp)
+                    then error "Wrong type when applying"
+                    else tell $ "(" ++ n ++ ")"
+                AVar (Constructor n ts tc) vars -> do
+                    when (t /= tc) $ error "Wrong type when applying"
+                    tell "("
+                    tell n
+                    zipWithM checkVar ts vars
+                    tell ")"
+            in do
+                tell' ident
+                tell' ": "
+                mapM_ implPred ls
+                tell "\t-o "
+                mapM_ implPred rs
+                tell "."
+
 
 
 -- createGame :: Game -> O ()
