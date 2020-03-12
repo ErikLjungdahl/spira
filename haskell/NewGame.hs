@@ -1,10 +1,12 @@
 {-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wall #-} -- Warnings enabled
+
 module NewGame where
 
-import Data
+import Prelude hiding (pred, init)
 
-import Data.List.Split
-import Data.List
+import Data
+import Data.List hiding (init)
 import Control.Monad.Writer
 import Control.Monad.State
 
@@ -17,21 +19,21 @@ data St = St
     , preds  :: [Pred]
     , consts :: [Constructor]
     , games  :: [Game]
-    , inits' :: Initial
+    , init :: Maybe Initial
     }
 
 type M a = State St a
 
 runGame :: M () -> FilePath -> IO ()
 runGame g fp =
-    let (res, ceptreOutput) = runWriter (createGameFromSt state)
-        (_, state) = runState g initSt
+    let (_, ceptreOutput) = runWriter (createGameFromSt st)
+        (_, st) = runState g initSt
         initSt = St
-            { preds = []
-            , games = []
-            --, inits' =
-            , types = []
+            { types  = []
+            , preds  = []
             , consts = []
+            , games  = []
+            , init   = Nothing
             }
     in writeFile fp ceptreOutput
 
@@ -97,9 +99,13 @@ tell_ = \s -> tell (s ++ " ")
 
 createGameFromSt :: St -> O ()
 createGameFromSt st = do
-    createTypes (reverse $ types st)
-    createPreds (reverse $ preds st)
+    createTypes  (reverse $ types  st)
+    createPreds  (reverse $ preds  st)
     createConsts (reverse $ consts st)
+    createGames  (reverse $ games  st)
+    --case init st of
+    --    Nothing -> error "You must have a initial context"
+    --    Just i -> createInit i
 
 
 createTypes :: [Type] -> O ()
@@ -128,6 +134,7 @@ createConsts cs = mapM_ (\(Constructor n ts t) ->
                             helper n ts (show t))
                         cs
 
+--TODO Test
 createGames :: [Game] -> O ()
 createGames = mapM_ createGame
     where
@@ -135,53 +142,73 @@ createGames = mapM_ createGame
         createGame = \case
             Stage n impls -> do
                 tell' $ "stage " ++ n ++ " = {"
-                mapM_ (uncurry createImplication)
+                mapM_ (\(impl , ident) -> do
+                            tell' ident
+                            createImplication impl
+                      )
                       (zip impls
-                           (map (\i -> n ++ '/' : show i) [1..]) )
+                           (map (\i -> n ++ '/' : show i) ([1..] :: [Integer]))
+                      )
                 tell' "}"
-        createImplication :: Implication -> String -> O ()
-        createImplication (Implication ls rs) ident =
-            let
-            implPred :: Pred -> O ()
-            implPred = \case
-                Pred n ts -> if ts == [] then tell n
-                    else error "Predicate needs to be applied to vars"
-                Bwd n ts  -> if ts == [] then tell n
-                    else error "bwd needs to be applied to vars"
-                StagePred n -> tell $ "stage " ++ n
-                ApplyPred pred vars -> case pred of
-                    Pred n ts -> applyPreds' n ts vars
-                    Bwd  n ts -> applyPreds' n ts vars
-                    StagePred _-> error "Can't apply something to a Stage predicate"
-                    -- TODO Can this be supported? Does it make sense?
-                    ApplyPred _ _-> error "Applying something to an already applied thing isn't supported"
+            Transition n impl -> do
+                tell' n
+                createImplication impl
 
-            applyPreds' n ts vars = do
-                when (length ts /= length vars) $ error "Wrong number of vars applied to a pred"
-                tell n
-                zipWithM checkVar ts vars
-                return ()
-
-            checkVar :: Type -> Var -> O ()
-            checkVar t = \case
-                Pattern n tp ->
-                    if (t /= tp)
-                    then error "Wrong type when applying"
-                    else tell $ "(" ++ n ++ ")"
-                AVar (Constructor n ts tc) vars -> do
-                    when (t /= tc) $ error "Wrong type when applying"
-                    tell "("
-                    tell n
-                    zipWithM checkVar ts vars
-                    tell ")"
-            in do
-                tell' ident
+        createImplication :: Implication -> O ()
+        createImplication (Implication ls rs) = do
                 tell' ": "
-                mapM_ implPred ls
+                ls' <- mapM createPred ls
+                tell $ intercalate "\n\t* " ls'
                 tell "\t-o "
-                mapM_ implPred rs
+                rs' <- mapM createPred rs
+                tell $ intercalate "\n\t* " rs'
                 tell "."
 
+-- Create the ceptre string from a Pred
+--TODO Test
+createPred :: Pred -> O String
+createPred = let
+    checkVars:: Name -> [Type] -> [Var] -> O String
+    checkVars n ts vars = do
+        when (length ts /= length vars) $ error "Wrong number of vars applied to a pred"
+        apreds <- zipWithM checkVar ts vars
+        return $ n ++ ' ':(intercalate " " apreds)
+
+    checkVar :: Type -> Var -> O String
+    checkVar t = \case
+        Pattern n tp ->
+            if (t /= tp)
+            then error "Wrong type when applying"
+            else return n
+        AVar (Constructor n ts tc) vars -> do
+            when (t /= tc) $ error "Wrong type when applying"
+            checkedvars <- zipWithM checkVar ts vars
+            let checkedvars' = intercalate " " checkedvars
+            return $ n ++ " (" ++ checkedvars' ++ ")"
+
+    in \case
+    Pred n ts -> if ts == [] then return n
+        else error "Predicate needs to be applied to vars"
+    Bwd n ts  -> if ts == [] then return n
+        else error "bwd needs to be applied to vars"
+    StagePred n -> return $ "stage " ++ n
+    ApplyPred pred vars -> case pred of
+        Pred n ts -> checkVars n ts vars
+        Bwd  n ts -> checkVars n ts vars
+        StagePred _-> error "Can't apply something to a Stage predicate"
+        -- TODO Can this be supported? Does it make sense?
+        ApplyPred _ _-> error "Applying something to an already applied thing isn't supported"
+
+
+--TODO Test
+createInit :: Initial -> O ()
+createInit (Initial n ps) = do
+    tell "#trace _ "
+    tell n
+    tell "\n\t{ "
+    appliedPreds <- mapM createPred ps
+    tell $ intercalate "\n\t, " appliedPreds
+    tell "}."
 
 
 -- createGame :: Game -> O ()
