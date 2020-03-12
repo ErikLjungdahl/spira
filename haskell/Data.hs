@@ -1,9 +1,11 @@
 module Data where
 
-data Game = Stage Name [Implication] -- "stage " ++ Stagepred ++ ...
+data Game = Stage Name [Implication] IsInteractive -- "stage " ++ Stagepred ++ ...
           | Transition Name Implication
           deriving (Show)
      -- | Context Name [Pred] -- Not really needed, since they can only be used in init
+
+type IsInteractive = Bool
 
 data Implication = Implication [Pred] [Pred] -- Basically -o (lolli) between the two lists
               deriving (Show)

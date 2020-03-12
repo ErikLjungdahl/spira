@@ -55,12 +55,6 @@ newType t = do
     let ty = Type t
     addType ty
     return ty
-    -- do
-    -- let p = type' t
-    -- addPred p
-    -- return p
-
-
 
 
 addGame :: Game -> M ()
@@ -82,7 +76,9 @@ nats = do
     ppNat <- newConstructor "s" [nat] nat
     return nat
 
-
+--TODO
+applyVar :: Constructor -> Var -> Var
+applyVar = undefined
 
 
 
@@ -140,7 +136,7 @@ createGames = mapM_ createGame
     where
         createGame :: Game -> O ()
         createGame = \case
-            Stage n impls -> do
+            Stage n impls isInteractive -> do
                 tell' $ "stage " ++ n ++ " = {"
                 mapM_ (\(impl , ident) -> do
                             tell' ident
@@ -150,6 +146,7 @@ createGames = mapM_ createGame
                            (map (\i -> n ++ '/' : show i) ([1..] :: [Integer]))
                       )
                 tell' "}"
+                when isInteractive $ tell' $ "#interactive " ++ n ++ "."
             Transition n impl -> do
                 tell' n
                 createImplication impl
@@ -157,17 +154,17 @@ createGames = mapM_ createGame
         createImplication :: Implication -> O ()
         createImplication (Implication ls rs) = do
                 tell' ": "
-                ls' <- mapM createPred ls
+                ls' <- mapM createAppliedPred ls
                 tell $ intercalate "\n\t* " ls'
                 tell "\t-o "
-                rs' <- mapM createPred rs
+                rs' <- mapM createAppliedPred rs
                 tell $ intercalate "\n\t* " rs'
                 tell "."
 
 -- Create the ceptre string from a Pred
 --TODO Test
-createPred :: Pred -> O String
-createPred = let
+createAppliedPred :: Pred -> O String
+createAppliedPred = let
     checkVars:: Name -> [Type] -> [Var] -> O String
     checkVars n ts vars = do
         when (length ts /= length vars) $ error "Wrong number of vars applied to a pred"
@@ -206,35 +203,6 @@ createInit (Initial n ps) = do
     tell "#trace _ "
     tell n
     tell "\n\t{ "
-    appliedPreds <- mapM createPred ps
+    appliedPreds <- mapM createAppliedPred ps
     tell $ intercalate "\n\t, " appliedPreds
     tell "}."
-
-
--- createGame :: Game -> O ()
--- createGame g =
---     let tell'  = \s -> tell  (s ++ "\n")
---         tell'' = \s -> tell' (s ++ "\n")
---    in case g of
---    Pred as [] t       -> tell $ "\n"
---    Pred as (x:xs) (Type t)    -> let as' = map (\(Type a) -> a) as
---        in do
---            tell' $ x ++ " " ++ (intercalate " " as') ++ " : " ++ t ++ "."
---            createGame (Pred as xs (Type t))
---    StageInteractive str preds -> tell'' $ "stage " ++ str ++ " = {\n"
---                                      ++ concatMap createString preds ++ "}\n#interactive game."
---    Stage str rules   -> do
---        tell' $ transition ++ "stage " ++ str ++ " = {"
---        mapM createGame rules -- TODO fix?
---        --tell' (intercalate "\n" rules')
---        tell "\n}"
---    Turn xs          -> tell' $ createTurn xs
---    Trace name         -> tell' $ "#trace _ " ++ name ++" init."
---    And g1 g2 -> do
---        createGame g1
---        createGame g2
---    Nop -> return ()
---    BoardContext x y -> tell'' $ allFree x y
---    Win  (Pred tx (x:_) _) (Pred ty (y:_) _) -> tell' $ winString x y
---    Draw (Pred tx (x:_) _) (Pred ty (y:_) _) -> tell' $ drawString x y
---    Rule string -> tell' string
