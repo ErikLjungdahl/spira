@@ -34,6 +34,9 @@ data Type = Type Name -- Det som användaren genererar.
 instance Show Type where
     show (Type s) = s
 
+
+--type StageTokens = (Pred, Pred)
+
 -- type Val = String
 
 -- data ApplyPred = ApplyPred Pred [Var]

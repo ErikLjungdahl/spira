@@ -37,20 +37,22 @@ runGame g fp =
             }
     in writeFile fp ceptreOutput
 
-newPred :: String -> M Pred
+--TODO check that Pred doesn't already exist
+newPred :: Name -> [Type] -> M Pred
 newPred s = undefined
     --let p = predicates [t] [s]
     --addPred p
     --return p
 
+--TODO check that Constructor doesn't already exist
 newConstructor :: Name -> [Type] -> Type -> M Constructor
 newConstructor s xt t = do
     let c = Constructor s xt t
     modify (\st -> st { consts = c : consts st})
     return c
 
-
-newType :: String -> M Type
+--TODO check that type doesn't already exist
+newType :: Name -> M Type
 newType t = do
     let ty = Type t
     addType ty
@@ -69,19 +71,49 @@ addType :: Type -> M ()
 addType g = do
     modify (\st -> st { types = g : types st})
 
-nats :: M Type
+nats :: M (Type, Constructor, Constructor)
 nats = do
     nat <- newType "nat"
-    pNat <- newConstructor "z" [] nat
-    ppNat <- newConstructor "s" [nat] nat
-    return nat
+    z <- newConstructor "z" [] nat
+    s <- newConstructor "s" [nat] nat
+    return (nat,s,z)
 
 --TODO
 applyVar :: Constructor -> Var -> Var
 applyVar = undefined
 
+-- Applies a constructor to a Var n times,
+-- useful for recursive constructors such as suc
+applyVarTimes :: Constructor -> Var -> Int -> Var
+applyVarTimes s x 0 = x
+applyVarTimes s x i = applyVar s (applyVarTimes s x (i-1))
 
+--TODO
+newVar :: Type -> M Var
+newVar = undefined
 
+--TODO
+applyPred :: Pred -> [Var] -> Pred
+applyPred = undefined
+
+--TODO
+addAppliedPredToInit :: Pred -> M ()
+addAppliedPredToInit = undefined
+
+-- Pred has to have the constructor "Pred _ [player, nat nat]"
+--inARow :: Board -> Int -> Pred -> Implication
+inARow :: Int -> Pred -> M Implication
+inARow n pred = do
+    let player = undefined -- player b
+        (nat, s, z) = undefined -- nat b
+
+    a <- newVar player
+    x <- newVar nat
+    y <- newVar nat
+
+    let occupiedAs = map (\i -> applyPred pred [a, applyVarTimes s x i, y]) [0..n-1]
+
+    return $ Implication occupiedAs []
 
 ---- BACKEND ----
 -- From our State (St) to ceptre
