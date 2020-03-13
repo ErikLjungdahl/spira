@@ -191,7 +191,11 @@ createPreds = mapM_ createPred
             Pred name ts -> helper name ts "pred"
             Bwd name ts -> helper name ts "bwd"
             StagePred _ -> error "You can't initialize a StagePred, don't put it in the state"
-            ApplyPred _ _ -> error "You can't apply a predicate to a variable in the top level"
+            ApplyPred p vars -> case p of
+                Bwd n ts -> do
+                    appliedPred <- checkVars n ts vars
+                    tell' $ appliedPred ++ "."
+                _ -> error "You can't apply a predicate to a variable in the top level"
 
 
 helper :: Name -> [Type] -> Name -> O ()
@@ -237,14 +241,8 @@ createGames = mapM_ createGame
 
 -- Create the ceptre string from a Pred
 --TODO Test
-createAppliedPred :: Pred -> O String
-createAppliedPred = let
-    checkVars:: Name -> [Type] -> [Var] -> O String
-    checkVars n ts vars = do
-        when (length ts /= length vars) $ error "Wrong number of vars applied to a pred"
-        apreds <- zipWithM checkVar ts vars
-        return $ n ++ ' ':(intercalate " " apreds)
-
+checkVars:: Name -> [Type] -> [Var] -> O String
+checkVars n ts vars = let
     checkVar :: Type -> Var -> O String
     checkVar t = \case
         Pattern n tp ->
@@ -256,8 +254,14 @@ createAppliedPred = let
             checkedvars <- zipWithM checkVar ts vars
             let checkedvars' = intercalate " " checkedvars
             return $ "(" ++ n ++ " " ++ checkedvars' ++ ")"
+    in do
+    when (length ts /= length vars) $ error "Wrong number of vars applied to a pred"
+    apreds <- zipWithM checkVar ts vars
+    return $ n ++ ' ':(intercalate " " apreds)
 
-    in \case
+
+createAppliedPred :: Pred -> O String
+createAppliedPred = \case
     Pred n ts -> if ts == [] then return n
         else error $ "Predicate "++n++" needs to be applied to vars"
     Bwd n ts  -> if ts == [] then return n
