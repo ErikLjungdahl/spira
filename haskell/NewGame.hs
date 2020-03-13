@@ -203,13 +203,18 @@ tell_ = \s -> tell (s ++ " ")
 
 createGameFromSt :: St -> O ()
 createGameFromSt st = do
+    tell' "% TYPES"
     createTypes  (reverse $ types  st)
+    tell' "\n% PREDS AND BWDS"
     createPreds  (reverse $ preds  st)
+    tell' "\n% CONSTRUCTORS"
     createConsts (reverse $ consts st)
+    tell' "\n% STAGES AND TRANSITIONS"
     createGames  (reverse $ games  st)
-    --case init st of
-    --    Nothing -> error "You must have a initial context"
-    --    Just i -> createInit i
+    tell' "\n% INITIAL"
+    case init st of
+        Nothing -> return () --TODO give error instead -- error "You must have a initial context"
+        Just i -> createInit i
 
 
 createTypes :: [Type] -> O ()
