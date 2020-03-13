@@ -12,6 +12,7 @@ import Control.Monad.State
 
 type Output = String
 
+-- TODO Add Error monad (Except)
 type O a = Writer Output a
 
 data St = St
@@ -20,6 +21,9 @@ data St = St
     , consts :: [Constructor]
     , games  :: [Game]
     , init :: Maybe Initial
+    , nbrOfPatterns :: Int
+    , player :: Type
+    , nats :: (Type,Constructor,Constructor)
     }
 
 type M a = State St a
@@ -27,14 +31,20 @@ type M a = State St a
 runGame :: M () -> FilePath -> IO ()
 runGame g fp =
     let (_, ceptreOutput) = runWriter (createGameFromSt st)
-        (_, st) = runState g initSt
+        (_, st) = runState (default_config >>=(\_ -> g)) initSt
         initSt = St
             { types  = []
             , preds  = []
             , consts = []
             , games  = []
             , init   = Nothing
+            , nbrOfPatterns = 0
             }
+        default_config :: M ()
+        default_config = do
+            player <- newType "player"
+            modify (\st -> st {player = player})
+            initNats
     in writeFile fp ceptreOutput
 
 newPred :: String -> M Pred
@@ -56,6 +66,7 @@ newPredWithType s xt = do
     addPred p
     return p
 
+
 --TODO check that Constructor doesn't already exist
 newConstructor :: Name -> [Type] -> Type -> M Constructor
 newConstructor s xt t = do
@@ -69,10 +80,6 @@ newType t = do
     let ty = Type t
     addType ty
     return ty
-
--- Creates predicates with a type
--- newtypePredicate :: [Type] -> [String] -> Type -> Pred
--- newtypePredicate as preds t = Pred as preds
 
 
 addGame :: Game -> M ()
@@ -109,42 +116,65 @@ players names = do
 
 
 
-
-nats :: M (Type, Constructor, Constructor)
-nats = do
+initNats :: M ()
+initNats = do
     nat <- newType "nat"
     z <- newConstructor "z" [] nat
     s <- newConstructor "s" [nat] nat
-    return (nat,s,z)
+    modify (\st -> st {nats=(nat,s,z)})
 
---TODO
-applyVar :: Constructor -> Var -> Var
-applyVar = undefined
+
+stage :: Name -> IsInteractive -> [Implication] -> M ()
+stage n isInteractive impls = do
+    player <- gets player
+    preToken <- newPredWithType ("pretoken_" ++ n)[player]
+    posToken <- newPredWithType ("postoken_" ++ n)[player]
+    token_var <- newVar player
+
+    let appliedPreToken = applyPred preToken [token_var]
+        appliedPosToken = applyPred posToken [token_var]
+        impls' = map (\(Implication l r) -> Implication
+                                                (appliedPreToken : l)
+                                                (appliedPosToken : r) )
+                      impls
+        s = Stage n impls' isInteractive
+    addGame s
+
+
+applyVar :: Constructor -> [Var] -> Var
+applyVar c vs = AVar c vs
 
 -- Applies a constructor to a Var n times,
 -- useful for recursive constructors such as suc
 applyVarTimes :: Constructor -> Var -> Int -> Var
 applyVarTimes s x 0 = x
-applyVarTimes s x i = applyVar s (applyVarTimes s x (i-1))
+applyVarTimes s x i = applyVar s [(applyVarTimes s x (i-1))]
 
---TODO
+
 newVar :: Type -> M Var
-newVar = undefined
+newVar t = do
+    n <- gets nbrOfPatterns
+    let l = (['A'..] !! n) :[]
+    modify (\st -> st {nbrOfPatterns = n + 1})
+    return $ Pattern l t
 
---TODO
 applyPred :: Pred -> [Var] -> Pred
-applyPred = undefined
+applyPred p vars = ApplyPred p vars
 
 --TODO
 addAppliedPredToInit :: Pred -> M ()
 addAppliedPredToInit = undefined
 
+
+
+
+
 -- Pred has to have the constructor "Pred _ [player, nat nat]"
 --inARow :: Board -> Int -> Pred -> Implication
 inARow :: Int -> Pred -> M Implication
 inARow n pred = do
-    let player = undefined -- player b
-        (nat, s, z) = undefined -- nat b
+    player <- gets player
+    (nat, s, z) <- gets nats
 
     a <- newVar player
     x <- newVar nat
@@ -153,6 +183,13 @@ inARow n pred = do
     let occupiedAs = map (\i -> applyPred pred [a, applyVarTimes s x i, y]) [0..n-1]
 
     return $ Implication occupiedAs []
+
+--TODO
+inAColumn :: Int -> Pred -> M Implication
+inAColumn = undefined
+inADiagonal :: Int -> Pred -> M Implication
+inADiagonal = undefined
+
 
 ---- BACKEND ----
 -- From our State (St) to ceptre
@@ -216,7 +253,7 @@ createGames = mapM_ createGame
                       (zip impls
                            (map (\i -> n ++ '/' : show i) ([1..] :: [Integer]))
                       )
-                tell' "}"
+                tell' "\n}"
                 when isInteractive $ tell' $ "#interactive " ++ n ++ "."
             Transition n impl -> do
                 tell' n
@@ -224,9 +261,9 @@ createGames = mapM_ createGame
 
         createImplication :: Implication -> O ()
         createImplication (Implication ls rs) = do
-                tell' ": "
+                tell "\t: "
                 ls' <- mapM createAppliedPred ls
-                tell $ intercalate "\n\t* " ls'
+                tell' $ intercalate "\n\t* " ls'
                 tell "\t-o "
                 rs' <- mapM createAppliedPred rs
                 tell $ intercalate "\n\t* " rs'
@@ -252,11 +289,11 @@ createAppliedPred = let
             when (t /= tc) $ error "Wrong type when applying"
             checkedvars <- zipWithM checkVar ts vars
             let checkedvars' = intercalate " " checkedvars
-            return $ n ++ " (" ++ checkedvars' ++ ")"
+            return $ "(" ++ n ++ " " ++ checkedvars' ++ ")"
 
     in \case
     Pred n ts -> if ts == [] then return n
-        else error "Predicate needs to be applied to vars"
+        else error $ "Predicate "++n++" needs to be applied to vars"
     Bwd n ts  -> if ts == [] then return n
         else error "bwd needs to be applied to vars"
     StagePred n -> return $ "stage " ++ n
