@@ -102,7 +102,7 @@ players names = do
     initiatePlayers names player
     --initiateOpponents names names opp
     return player
-    where 
+    where
         initiatePlayers [] p = return ()
         initiatePlayers (n:ns) p = do
             newConstructor n [] p
@@ -286,8 +286,10 @@ checkVars n ts vars = let
         AVar (Constructor n ts tc) vars -> do
             when (t /= tc) $ error "Wrong type when applying"
             checkedvars <- zipWithM checkVar ts vars
-            let checkedvars' = intercalate " " checkedvars
-            return $ "(" ++ n ++ " " ++ checkedvars' ++ ")"
+            if checkedvars == []
+            then return n
+            else let checkedvars' = intercalate " " checkedvars
+                 in return $ "(" ++ n ++ " " ++ checkedvars' ++ ")"
     in do
     when (length ts /= length vars) $ error "Wrong number of vars applied to a pred"
     apreds <- zipWithM checkVar ts vars
