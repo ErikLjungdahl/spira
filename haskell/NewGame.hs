@@ -97,7 +97,7 @@ addType g = do
 
 players :: [String] -> M Type
 players names = do
-    player <- newType "player"
+    player <- gets player -- newType "player"
     opp <- newBwd "opp" [player, player]
     initiatePlayers names player
     --initiateOpponents names names opp
