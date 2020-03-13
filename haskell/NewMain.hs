@@ -6,5 +6,6 @@ main = runGame ticTacToe "game.cep"
 
 ticTacToe :: M ()
 ticTacToe = do
-    nats
+    --nats
+    players ["jennie","simon","erik","peter","nicke","oskar"]
     return ()

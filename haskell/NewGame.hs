@@ -37,12 +37,24 @@ runGame g fp =
             }
     in writeFile fp ceptreOutput
 
+newPred :: String -> M Pred
+newPred s = do
+    let p = Pred s []
+    addPred p
+    return p
+
+newBwd :: String -> [Type] -> M Pred
+newBwd s tx = do
+    let p = Bwd s tx
+    addPred p
+    return p
+
 --TODO check that Pred doesn't already exist
-newPred :: Name -> [Type] -> M Pred
-newPred s = undefined
-    --let p = predicates [t] [s]
-    --addPred p
-    --return p
+newPredWithType :: Name -> [Type] -> M Pred
+newPredWithType s xt = do
+    let p = Pred s xt
+    addPred p
+    return p
 
 --TODO check that Constructor doesn't already exist
 newConstructor :: Name -> [Type] -> Type -> M Constructor
@@ -58,6 +70,10 @@ newType t = do
     addType ty
     return ty
 
+-- Creates predicates with a type
+-- newtypePredicate :: [Type] -> [String] -> Type -> Pred
+-- newtypePredicate as preds t = Pred as preds
+
 
 addGame :: Game -> M ()
 addGame g = do
@@ -70,6 +86,29 @@ addPred g = do
 addType :: Type -> M ()
 addType g = do
     modify (\st -> st { types = g : types st})
+
+
+players :: [String] -> M Type
+players names = do
+    player <- newType "player"
+    opp <- newBwd "opp" [player, player]
+    initiatePlayers names player
+    --initiateOpponents names names opp
+    return player
+    where 
+        initiatePlayers [] p = return ()
+        initiatePlayers (n:ns) p = do
+            newConstructor n [] p
+            initiatePlayers ns p
+
+        --initiateOpponents []      n2  opp = return ()
+        --initiateOpponents (n1:ns) (n2:n2s) opp = newPattern n1 n2 opp
+
+        --opponentHelper you []      = return ()
+        --opponentHelper you (n2:ns) = undefined
+
+
+
 
 nats :: M (Type, Constructor, Constructor)
 nats = do
