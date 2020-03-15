@@ -2,6 +2,7 @@
 {-# OPTIONS_GHC -Wall #-} -- Warnings enabled
 
 module NewGame where
+--TODO Only export the functions that we want the user to be able to use.
 
 import Prelude hiding (pred, init)
 
@@ -20,10 +21,11 @@ data St = St
     , preds  :: [Pred]
     , consts :: [Constructor]
     , games  :: [Game]
-    , init :: Maybe Initial
+    , initStage :: Maybe Name
+    , initialPreds :: [Pred]
     , nbrOfPatterns :: Int
     , player :: Type
-    , nats :: (Type,Constructor,Constructor)
+    , nats :: (Type,Constructor,Var)
     , turn :: Pred
     , drawStage :: (Pred,Pred,Pred)
     }
@@ -39,7 +41,8 @@ runGame g fp =
             , preds  = []
             , consts = []
             , games  = []
-            , init   = Nothing
+            , initStage = Nothing
+            , initialPreds = []
             , nbrOfPatterns = 0
             }
         default_config :: M ()
@@ -93,6 +96,11 @@ newConstructor s xt t = do
     modify (\st -> st { consts = c : consts st})
     return c
 
+newEmptyConstructor :: Name -> Type -> M Var
+newEmptyConstructor n t = do
+    constructor <- newConstructor n [] t
+    return $ applyVar constructor []
+
 --TODO check that type doesn't already exist
 newType :: Name -> M Type
 newType t = do
@@ -114,13 +122,22 @@ addType g = do
     modify (\st -> st { types = g : types st})
 
 
-players :: [String] -> M Type
+players :: [String] -> M (Type, [Var], (Pred,Pred,Pred))
 players names = do
     player <- gets player -- newType "player"
     opp <- newBwd "opp" [player, player]
-    initiatePlayers names player
+    players <- mapM (\n -> newEmptyConstructor n player) names
     --initiateOpponents names names opp
-    return player
+
+    -- TODO more general
+    let appliedOpp1 = applyPred opp [head players, last players]
+        appliedOpp2 = applyPred opp [last players, head players]
+    addPred appliedOpp1
+    addPred appliedOpp2
+
+
+    nps <- nextPlayerStage opp
+    return (player,players, nps)
     where
         initiatePlayers [] p = return ()
         initiatePlayers (n:ns) p = do
@@ -138,7 +155,7 @@ players names = do
 initNats :: M ()
 initNats = do
     nat <- newType "nat"
-    z <- newConstructor "z" [] nat
+    z <- newEmptyConstructor "z" nat
     s <- newConstructor "s" [nat] nat
     modify (\st -> st {nats=(nat,s,z)})
 
@@ -193,8 +210,36 @@ transition :: Name -> Implication -> M ()
 transition n (Implication ls rs) = do
     let impl = Implication (qui : ls) rs
     addGame (Transition n impl)
+
 qui :: Pred
 qui = Pred "qui" []
+
+nextPlayerStage :: Pred -> M (Pred,Pred,Pred)
+nextPlayerStage opp = do
+    let n = "next_player"
+
+    player <- gets player
+    preToken <- newPredWithType ("pretoken_" ++ n)[player]
+    posToken <- newPredWithType ("postoken_" ++ n)[player]
+
+    prevPlayer <- newVar player
+    nextPlayer <- newVar player
+
+    let appliedPreToken = applyPred preToken [prevPlayer]
+        appliedPosToken = applyPred posToken [nextPlayer]
+        appliedOpponent = applyPred opp [prevPlayer,nextPlayer]
+        impls = [Implication
+                    [appliedPreToken, appliedOpponent]
+                    [appliedPosToken]
+                ]
+        s = Stage n impls False
+    addGame s
+    let stagePred = StagePred n
+    let res = (preToken, stagePred, posToken)
+
+
+    return res
+
 
 applyVar :: Constructor -> [Var] -> Var
 applyVar c vs = AVar c vs
@@ -216,9 +261,18 @@ newVar t = do
 applyPred :: Pred -> [Var] -> Pred
 applyPred p vars = ApplyPred p vars
 
+initialStageAndPlayer :: (Pred,Pred,Pred) -> Var -> M ()
+initialStageAndPlayer (pretoken,StagePred n ,_) startingPlayer = do
+    modify (\st -> st { initStage = Just n})
+    let a = applyPred pretoken [startingPlayer]
+    addAppliedPredsToInit [a]
+
+
+
 --TODO
-addAppliedPredToInit :: Pred -> M ()
-addAppliedPredToInit = undefined
+addAppliedPredsToInit :: [Pred] -> M ()
+addAppliedPredsToInit ps =
+    modify (\st -> st {initialPreds = ps ++ initialPreds st})
 
 
 
@@ -239,11 +293,33 @@ inARow n pred playerVar = do
 
     return $ Implication occupiedAs []
 
+
 --TODO
-inAColumn :: Int -> Pred -> M Implication
-inAColumn = undefined
-inADiagonal :: Int -> Pred -> M Implication
-inADiagonal = undefined
+inAColumn :: Int -> Pred -> Var -> M Implication
+inAColumn n pred playerVar = do
+    player <- gets player
+    (nat, s, z) <- gets nats
+
+    x <- newVar nat
+    y <- newVar nat
+
+    let occupiedAs = map (\i -> applyPred pred [playerVar, x, applyVarTimes s y i]) [0..n-1]
+
+    return $ Implication occupiedAs []
+inADiagonal :: Int -> Pred -> Var -> M [Implication]
+inADiagonal n pred playerVar = do
+    player <- gets player
+    (nat, s, z) <- gets nats
+
+    x <- newVar nat
+    y <- newVar nat
+
+    let occupiedUp = map (\i -> applyPred pred [playerVar, applyVarTimes s x i, applyVarTimes s y i]) [0..n-1]
+    let occupiedDown = map (\i -> applyPred pred [playerVar, applyVarTimes s x i, applyVarTimes s y (n-1-i)]) [0..n-1]
+
+    return $ [Implication occupiedUp   []
+             ,Implication occupiedDown []
+             ]
 
 
 ---- BACKEND ----
@@ -260,16 +336,16 @@ createGameFromSt :: St -> O ()
 createGameFromSt st = do
     tell' "% TYPES"
     createTypes  (reverse $ types  st)
-    tell' "\n% PREDS AND BWDS"
-    createPreds  (reverse $ preds  st)
     tell' "\n% CONSTRUCTORS"
     createConsts (reverse $ consts st)
+    tell' "\n% PREDS AND BWDS"
+    createPreds  (reverse $ preds  st)
     tell' "\n% STAGES AND TRANSITIONS"
     createGames  (reverse $ games  st)
     tell' "\n% INITIAL"
-    case init st of
+    case initStage st of
         Nothing -> return () --TODO give error instead -- error "You must have a initial context"
-        Just i -> createInit i
+        Just s -> createInit (Initial s (initialPreds st))
 
 
 createTypes :: [Type] -> O ()
