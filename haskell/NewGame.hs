@@ -24,6 +24,8 @@ data St = St
     , nbrOfPatterns :: Int
     , player :: Type
     , nats :: (Type,Constructor,Constructor)
+    , turn :: Pred
+    , drawStage :: (Pred,Pred,Pred)
     }
 
 type M a = State St a
@@ -43,9 +45,26 @@ runGame g fp =
         default_config :: M ()
         default_config = do
             player <- newType "player"
+            -- turn_p <- newPredWithType "turn" [player]
+
             modify (\st -> st {player = player})
             initNats
+
+            -- Draw, goes here in case of no available choice
+            stageDraw
+
     in writeFile fp ceptreOutput
+
+stageDraw :: M ()
+stageDraw = do
+    player <- gets player
+    drawPred <- newPredWithType "draw" [player]
+    varPlayer <- newVar player
+    end <- newPred "end"
+
+    let appliedDraw = applyPred drawPred [varPlayer]
+    drawStage <- stage "draw" False [[appliedDraw] -* [end]] varPlayer
+    modify (\st -> st {drawStage = drawStage})
 
 newPred :: String -> M Pred
 newPred s = do
@@ -124,22 +143,58 @@ initNats = do
     modify (\st -> st {nats=(nat,s,z)})
 
 
-stage :: Name -> IsInteractive -> [Implication] -> M ()
-stage n isInteractive impls = do
+stage :: Name -> IsInteractive -> [Implication] -> Var -> M (Pred,Pred,Pred)
+stage n isInteractive impls playerVar= do
     player <- gets player
     preToken <- newPredWithType ("pretoken_" ++ n)[player]
     posToken <- newPredWithType ("postoken_" ++ n)[player]
-    token_var <- newVar player
 
-    let appliedPreToken = applyPred preToken [token_var]
-        appliedPosToken = applyPred posToken [token_var]
+    let appliedPreToken = applyPred preToken [playerVar]
+        appliedPosToken = applyPred posToken [playerVar]
         impls' = map (\(Implication l r) -> Implication
                                                 (appliedPreToken : l)
                                                 (appliedPosToken : r) )
                       impls
         s = Stage n impls' isInteractive
     addGame s
+    let stagePred = StagePred n
+    let res = (preToken, stagePred, posToken)
 
+    -- Add draw
+    when isInteractive $ do
+        drawStage <- gets drawStage
+        transition (n ++ "_to_draw")
+                   ((res `toStageWith` playerVar)
+                   -*
+                    (drawStage `toStageWith` playerVar))
+
+    return res
+
+fromStageWith :: (Pred,Pred,Pred) -> Var -> [Pred]
+fromStageWith (_,stagePred,posToken) v =
+    [stagePred, applyPred posToken [v]]
+
+toStageWith :: (Pred,Pred,Pred) -> Var -> [Pred]
+toStageWith (preToken,stagePred,_) v =
+    [applyPred preToken [v], stagePred]
+
+fromStageToStageWith :: (Pred,Pred,Pred) -> (Pred,Pred,Pred) -> Var -> Implication
+fromStageToStageWith from to p =
+    (from `fromStageWith` p)
+    -*
+    (to `toStageWith` p)
+fromFailedStageToStageWith :: (Pred,Pred,Pred) -> (Pred,Pred,Pred) -> Var -> Implication
+fromFailedStageToStageWith from to p =
+    (from `toStageWith` p)
+    -*
+    (to `toStageWith` p)
+
+transition :: Name -> Implication -> M ()
+transition n (Implication ls rs) = do
+    let impl = Implication (qui : ls) rs
+    addGame (Transition n impl)
+qui :: Pred
+qui = Pred "qui" []
 
 applyVar :: Constructor -> [Var] -> Var
 applyVar c vs = AVar c vs
@@ -167,20 +222,20 @@ addAppliedPredToInit = undefined
 
 
 
-
+(-*) :: [Pred] -> [Pred] -> Implication
+ps1 -* ps2 = Implication ps1 ps2
 
 -- Pred has to have the constructor "Pred _ [player, nat nat]"
 --inARow :: Board -> Int -> Pred -> Implication
-inARow :: Int -> Pred -> M Implication
-inARow n pred = do
+inARow :: Int -> Pred -> Var -> M Implication
+inARow n pred playerVar = do
     player <- gets player
     (nat, s, z) <- gets nats
 
-    a <- newVar player
     x <- newVar nat
     y <- newVar nat
 
-    let occupiedAs = map (\i -> applyPred pred [a, applyVarTimes s x i, y]) [0..n-1]
+    let occupiedAs = map (\i -> applyPred pred [playerVar, applyVarTimes s x i, y]) [0..n-1]
 
     return $ Implication occupiedAs []
 
@@ -264,9 +319,11 @@ createGames = mapM_ createGame
                       )
                 tell' "\n}"
                 when isInteractive $ tell' $ "#interactive " ++ n ++ "."
+                tell' ""
             Transition n impl -> do
                 tell' n
                 createImplication impl
+                tell'' ""
 
         createImplication :: Implication -> O ()
         createImplication (Implication ls rs) = do
