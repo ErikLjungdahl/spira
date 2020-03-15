@@ -105,7 +105,7 @@ newEmptyConstructor n t = do
 newType :: Name -> M Type
 newType t = do
     let ty = Type t
-    addType ty
+    modify (\st -> st { types = ty : types st})
     return ty
 
 
@@ -116,11 +116,6 @@ addGame g = do
 addPred :: Pred -> M ()
 addPred g = do
     modify (\st -> st { preds = g : preds st})
-
-addType :: Type -> M ()
-addType g = do
-    modify (\st -> st { types = g : types st})
-
 
 players :: [String] -> M (Type, [Var], (Pred,Pred,Pred))
 players names = do
@@ -195,17 +190,26 @@ toStageWith :: (Pred,Pred,Pred) -> Var -> [Pred]
 toStageWith (preToken,stagePred,_) v =
     [applyPred preToken [v], stagePred]
 
-fromStageToStageWith :: (Pred,Pred,Pred) -> (Pred,Pred,Pred) -> Var -> Implication
-fromStageToStageWith from to p =
-    (from `fromStageWith` p)
-    -*
-    (to `toStageWith` p)
-fromFailedStageToStageWith :: (Pred,Pred,Pred) -> (Pred,Pred,Pred) -> Var -> Implication
-fromFailedStageToStageWith from to p =
-    (from `toStageWith` p)
-    -*
-    (to `toStageWith` p)
+--TODO Maybe this could be represented with a
+fromStageToStage :: (Pred,Pred,Pred) -> (Pred,Pred,Pred) -> M ()
+fromStageToStage from to = do
+    p <- gets player
+    pVar<- newVar p
+    transition (show (sndOf3 from) ++ "_to_" ++ show (sndOf3 to))
+            $ (from `fromStageWith` pVar)
+              -*
+              (to `toStageWith` pVar)
+fromFailedStageToStage :: (Pred,Pred,Pred) -> (Pred,Pred,Pred) -> M ()
+fromFailedStageToStage from to = do
+    p <- gets player
+    pVar<- newVar p
+    transition (show (sndOf3 from) ++ "_failed_to_" ++ show (sndOf3 to))
+            $ (from `toStageWith` pVar)
+              -*
+              (to `toStageWith` pVar)
 
+sndOf3 (_,b,_) = b
+--TODO Name should probably be auto-generated
 transition :: Name -> Implication -> M ()
 transition n (Implication ls rs) = do
     let impl = Implication (qui : ls) rs

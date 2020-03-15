@@ -28,28 +28,16 @@ ticTacToe = do
     stage_win <- stage "win" False (rowrule:colrule:diarules) p
 
     -- After play we check win condition
-    transition "play_to_win" (
-                fromStageToStageWith
-                    stage_play
-                    stage_win
-                    p)
-
+    stage_play `fromStageToStage` stage_win
     -- If noone has won, we go to the next player
-    transition "win_to_next_player" (
-                fromFailedStageToStageWith
-                    stage_win
-                    stage_next_player
-                    p)
-
+    stage_win `fromFailedStageToStage`stage_next_player
     -- And then the next player gets to play
-    transition "next_player_to_play" (
-                fromStageToStageWith
-                    stage_next_player
-                    stage_play
-                    p)
+    stage_next_player`fromStageToStage` stage_play
+
 
     initialStageAndPlayer stage_play (head playernames)
 
+    -- Set all tiles to free as initial state
     addAppliedPredsToInit $
         map (applyPred free) [[applyVarTimes s z x ,applyVarTimes s z y] | x <- [0..2], y <- [0..2]]
     return ()

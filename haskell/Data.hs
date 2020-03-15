@@ -14,7 +14,6 @@ data Pred = Pred Name [Type]
           | Bwd Name [Type]
           | StagePred Name
           | ApplyPred Pred [Var]
-        deriving (Show)
 
 data Var = Pattern Name Type
          | AVar Constructor [Var]
@@ -34,6 +33,10 @@ data Type = Type Name -- Det som användaren genererar.
 instance Show Type where
     show (Type s) = s
 
+instance Show Pred where
+    show p = case p of
+        StagePred n -> n
+        s -> show s
 
 --type StageTokens = (Pred, Pred)
 
