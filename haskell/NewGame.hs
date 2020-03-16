@@ -58,6 +58,9 @@ runGame g fp =
 
     in writeFile fp ceptreOutput
 
+-- Generates the stage for draws
+-- A player automatically goes to this stage if it has no
+--      available choice in an interactive stage
 stageDraw :: M ()
 stageDraw = do
     player <- gets player
@@ -75,11 +78,14 @@ newPred s = do
     addPred p
     return p
 
+-- Creates a Fact type
 newBwd :: String -> [Type] -> M Pred
 newBwd s tx = do
     let p = Bwd s tx
     addPred p
     return p
+
+--
 
 --TODO check that Pred doesn't already exist
 newPredWithType :: Name -> [Type] -> M Pred
@@ -90,18 +96,22 @@ newPredWithType s xt = do
 
 
 --TODO check that Constructor doesn't already exist
+-- Creates a Constructor which can be used in `applyVar` to create an instance of it.
 newConstructor :: Name -> [Type] -> Type -> M Constructor
 newConstructor s xt t = do
     let c = Constructor s xt t
     modify (\st -> st { consts = c : consts st})
     return c
 
+-- Special case of `newConstructor`, applies the Constucor to an empty list
+-- returns a Var
 newEmptyConstructor :: Name -> Type -> M Var
 newEmptyConstructor n t = do
     constructor <- newConstructor n [] t
     return $ applyVar constructor []
 
 --TODO check that type doesn't already exist
+-- Creates a new type which can be used when creating predicates and Constructors
 newType :: Name -> M Type
 newType t = do
     let ty = Type t
@@ -154,7 +164,8 @@ initNats = do
     s <- newConstructor "s" [nat] nat
     modify (\st -> st {nats=(nat,s,z)})
 
-
+-- Creates a stage, returns a StageIdentifier which can be used to create
+--      transition between stages with e.g. `fromStageToStage`
 stage :: Name -> IsInteractive -> [Implication] -> Var -> M (Pred,Pred,Pred)
 stage n isInteractive impls playerVar= do
     player <- gets player
@@ -181,16 +192,18 @@ stage n isInteractive impls playerVar= do
                     (drawStage `toStageWith` playerVar))
 
     return res
-
+-- Helper function for fromStageToStage
 fromStageWith :: (Pred,Pred,Pred) -> Var -> [Pred]
 fromStageWith (_,stagePred,posToken) v =
     [stagePred, applyPred posToken [v]]
 
+-- Helper function for fromStageToStage
 toStageWith :: (Pred,Pred,Pred) -> Var -> [Pred]
 toStageWith (preToken,stagePred,_) v =
     [applyPred preToken [v], stagePred]
 
---TODO Maybe this could be represented with a
+-- Creates a transition which takes a player from one succesful stage to another stage
+-- A succesful stage being one where the player performed one of the actions in a stage
 fromStageToStage :: (Pred,Pred,Pred) -> (Pred,Pred,Pred) -> M ()
 fromStageToStage from to = do
     p <- gets player
@@ -199,6 +212,9 @@ fromStageToStage from to = do
             $ (from `fromStageWith` pVar)
               -*
               (to `toStageWith` pVar)
+-- Creates a transition which takes a player from a failed stage to another stage
+-- A Failed stage being one where the player didn't have the requirements for any of the actions.
+-- Usually used from winStage to nextPlayerStage
 fromFailedStageToStage :: (Pred,Pred,Pred) -> (Pred,Pred,Pred) -> M ()
 fromFailedStageToStage from to = do
     p <- gets player
@@ -208,8 +224,12 @@ fromFailedStageToStage from to = do
               -*
               (to `toStageWith` pVar)
 
+sndOf3 :: (a,b,c) -> b
 sndOf3 (_,b,_) = b
+
 --TODO Name should probably be auto-generated
+-- Creates a transition between stages.
+-- The user Should use `fromStageToStage` or `fromFailedStageToStage`
 transition :: Name -> Implication -> M ()
 transition n (Implication ls rs) = do
     let impl = Implication (qui : ls) rs
@@ -218,6 +238,7 @@ transition n (Implication ls rs) = do
 qui :: Pred
 qui = Pred "qui" []
 
+-- Creates the stage which handles giving the next player a token
 nextPlayerStage :: Pred -> M (Pred,Pred,Pred)
 nextPlayerStage opp = do
     let n = "next_player"
@@ -244,7 +265,7 @@ nextPlayerStage opp = do
 
     return res
 
-
+-- Takes a Constructor and applied it to a list of Vars, and return an AppliedVar
 applyVar :: Constructor -> [Var] -> Var
 applyVar c vs = AVar c vs
 
@@ -254,7 +275,10 @@ applyVarTimes :: Constructor -> Var -> Int -> Var
 applyVarTimes s x 0 = x
 applyVarTimes s x i = applyVar s [(applyVarTimes s x (i-1))]
 
-
+--TODO Max 26 Vars currently
+--     nbrOfPatterns could maybe be reset at end of stages/transitions
+--     Or perhaps it should be handled in the backend
+-- Returns a Pattern that can be patternmatched on.
 newVar :: Type -> M Var
 newVar t = do
     n <- gets nbrOfPatterns
@@ -262,9 +286,11 @@ newVar t = do
     modify (\st -> st {nbrOfPatterns = n + 1})
     return $ Pattern l t
 
+-- Sets values/patterns to a Pred, and return an AppliedPred
 applyPred :: Pred -> [Var] -> Pred
 applyPred p vars = ApplyPred p vars
 
+-- Sets the initial stage that given player starts in
 initialStageAndPlayer :: (Pred,Pred,Pred) -> Var -> M ()
 initialStageAndPlayer (pretoken,StagePred n ,_) startingPlayer = do
     modify (\st -> st { initStage = Just n})
@@ -272,19 +298,19 @@ initialStageAndPlayer (pretoken,StagePred n ,_) startingPlayer = do
     addAppliedPredsToInit [a]
 
 
-
---TODO
+-- Each Pred in the list needs to be applied,
+-- since they need to actually have a value.
 addAppliedPredsToInit :: [Pred] -> M ()
 addAppliedPredsToInit ps =
     modify (\st -> st {initialPreds = ps ++ initialPreds st})
 
 
-
+-- Linear Implication (called lollipop)
+-- Removes the left hand side and gives the right hand side
 (-*) :: [Pred] -> [Pred] -> Implication
 ps1 -* ps2 = Implication ps1 ps2
 
 -- Pred has to have the constructor "Pred _ [player, nat nat]"
---inARow :: Board -> Int -> Pred -> Implication
 inARow :: Int -> Pred -> Var -> M Implication
 inARow n pred playerVar = do
     player <- gets player
@@ -297,8 +323,7 @@ inARow n pred playerVar = do
 
     return $ Implication occupiedAs []
 
-
---TODO
+-- Pred has to have the constructor "Pred _ [player, nat nat]"
 inAColumn :: Int -> Pred -> Var -> M Implication
 inAColumn n pred playerVar = do
     player <- gets player
@@ -310,6 +335,8 @@ inAColumn n pred playerVar = do
     let occupiedAs = map (\i -> applyPred pred [playerVar, x, applyVarTimes s y i]) [0..n-1]
 
     return $ Implication occupiedAs []
+
+-- Pred has to have the constructor "Pred _ [player, nat nat]"
 inADiagonal :: Int -> Pred -> Var -> M [Implication]
 inADiagonal n pred playerVar = do
     player <- gets player
@@ -397,13 +424,13 @@ createGames = mapM_ createGame
                       (zip impls
                            (map (\i -> n ++ '/' : show i) ([1..] :: [Integer]))
                       )
-                tell' "\n}"
+                tell' "}"
                 when isInteractive $ tell' $ "#interactive " ++ n ++ "."
                 tell' ""
             Transition n impl -> do
                 tell' n
                 createImplication impl
-                tell'' ""
+                tell' ""
 
         createImplication :: Implication -> O ()
         createImplication (Implication ls rs) = do
@@ -413,7 +440,7 @@ createGames = mapM_ createGame
                 tell "\t-o "
                 rs' <- mapM createAppliedPred rs
                 tell $ intercalate "\n\t* " rs'
-                tell "."
+                tell' "."
 
 -- Create the ceptre string from a Pred
 --TODO Test
