@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -Wall #-} -- Warnings enabled
 
-module NewGame where
+module Game where
 --TODO Only export the functions that we want the user to be able to use.
 
 import Prelude hiding (pred, init)
@@ -78,12 +78,19 @@ newPred s = do
     addPred p
     return p
 
--- Creates a Fact type
-newBwd :: String -> [Type] -> M Pred
-newBwd s tx = do
+-- Creates a Fact Pred
+newFactConstructor :: String -> [Type] -> M Pred
+newFactConstructor s tx = do
     let p = Bwd s tx
     addPred p
     return p
+
+-- Creates a fact.
+-- [Var] can't contain Patterns
+newFact :: Pred -> [Var] -> M ()
+newFact b vars = do
+    let appliedFact = applyPred b vars
+    addPred appliedFact
 
 --
 
@@ -130,16 +137,13 @@ addPred g = do
 players :: [String] -> M (Type, [Var], (Pred,Pred,Pred))
 players names = do
     player <- gets player -- newType "player"
-    opp <- newBwd "opp" [player, player]
+    opp <- newFactConstructor "opp" [player, player]
     players <- mapM (\n -> newEmptyConstructor n player) names
     --initiateOpponents names names opp
 
     -- TODO more general
-    let appliedOpp1 = applyPred opp [head players, last players]
-        appliedOpp2 = applyPred opp [last players, head players]
-    addPred appliedOpp1
-    addPred appliedOpp2
-
+    newFact opp [head players, last players]
+    newFact opp [last players, head players]
 
     nps <- nextPlayerStage opp
     return (player,players, nps)
