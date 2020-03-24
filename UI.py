@@ -33,12 +33,11 @@ def main():
 # Modifies the (s (s z)) -> int.
 def modify(line):
 	tmp = re.sub(r"\([sz].*?\)", lambda m: str(m.group().count("s")), line)
-	return tmp.replace(r')', "").replace(r'\sz'," 0")
-
+	return tmp.replace(")", "").replace(" z"," 0")
 # Add every case we don't write out.
 def keep(line):
 	if re.match(r"Trace:",line):
 		return True
-    return False
+	return False
 
 main()
