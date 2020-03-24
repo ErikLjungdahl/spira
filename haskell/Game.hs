@@ -4,7 +4,8 @@
 module Game where
 --TODO Only export the functions that we want the user to be able to use.
 
-import Prelude hiding (pred, init)
+import Prelude hiding (pred, init, (+))
+import qualified Prelude as P
 
 import Data
 import Data.List hiding (init)
@@ -79,20 +80,30 @@ newPred s = do
     return p
 
 -- Creates a Fact Pred
-newFactConstructor :: String -> [Type] -> M Pred
-newFactConstructor s tx = do
+newFactType :: String -> [Type] -> M Pred
+newFactType s tx = do
     let p = Bwd s tx
     addPred p
     return p
 
 -- Creates a fact.
--- [Var] can't contain Patterns
+-- Pred should be Bwd
+-- [Var] can contain Patterns
 newFact :: Pred -> [Var] -> M ()
 newFact b vars = do
     let appliedFact = applyPred b vars
     addPred appliedFact
 
 --
+-- Takes two ApplyPreds on Bwd-predicates and creates a bwd-implication
+(-->) :: Pred -> Pred -> Pred
+b1 --> b2 = b1 `BwdImplication` b2
+
+-- Used after (-->) to output the logical implication
+emitFactImpl :: Pred -> M ()
+emitFactImpl p = case p of
+    BwdImplication _ _ -> addPred p
+    _ -> error "Not a BwdImplication"
 
 --TODO check that Pred doesn't already exist
 newPredWithType :: Name -> [Type] -> M Pred
@@ -137,7 +148,7 @@ addPred g = do
 players :: [String] -> M (Type, [Var], (Pred,Pred,Pred))
 players names = do
     player <- gets player -- newType "player"
-    opp <- newFactConstructor "opp" [player, player]
+    opp <- newFactType "opp" [player, player]
     players <- mapM (\n -> newEmptyConstructor n player) names
     --initiateOpponents names names opp
 
@@ -167,6 +178,37 @@ initNats = do
     z <- newEmptyConstructor "z" nat
     s <- newConstructor "s" [nat] nat
     modify (\st -> st {nats=(nat,s,z)})
+
+-- Initias the LT operator (less-than)
+-- Returns the predicate "lt" which needs to be applied to something to be used.
+initLT :: M Pred
+initLT = do
+    (nat,s,z) <- gets nats
+    lt <- newFactType "lt" [nat, nat]
+
+    n <- newVar nat
+    m <- newVar nat
+    np1 <- n+1
+    mp1 <- m+1
+
+    newFact lt [z, np1]
+    emitFactImpl $ (applyPred lt [n, m]) --> (applyPred lt [np1,mp1])
+    return lt
+-- Initias the LT operator (less-than)
+-- Returns the predicate "lt" which needs to be applied to something to be used.
+initLTE :: M Pred
+initLTE = do
+    (nat,s,z) <- gets nats
+    lte <- newFactType "lte" [nat, nat]
+
+    n <- newVar nat
+    m <- newVar nat
+    np1 <- n+1
+    mp1 <- m+1
+
+    newFact lte [z, n]
+    emitFactImpl $ (applyPred lte [n, m]) --> (applyPred lte [np1,mp1])
+    return lte
 
 -- Creates a stage, returns a StageIdentifier which can be used to create
 --      transition between stages with e.g. `fromStageToStage`
@@ -279,6 +321,14 @@ applyVarTimes :: Constructor -> Var -> Int -> Var
 applyVarTimes s x 0 = x
 applyVarTimes s x i = applyVar s [(applyVarTimes s x (i-1))]
 
+(+) :: Var -> Int -> M Var
+(+) v n = do
+    (nat, s, z) <- gets nats
+    let appliedVar = applyVarTimes s v n
+    return appliedVar
+
+
+
 --TODO Max 26 Vars currently
 --     nbrOfPatterns could maybe be reset at end of stages/transitions
 --     Or perhaps it should be handled in the backend
@@ -287,7 +337,7 @@ newVar :: Type -> M Var
 newVar t = do
     n <- gets nbrOfPatterns
     let l = (['A'..] !! n) :[]
-    modify (\st -> st {nbrOfPatterns = n + 1})
+    modify (\st -> st {nbrOfPatterns = n P.+ 1})
     return $ Pattern l t
 
 -- Sets values/patterns to a Pred, and return an AppliedPred
@@ -389,28 +439,37 @@ createTypes ts = mapM_ (\(Type name) -> tell' $ name ++ " : type.") ts
 
 
 createPreds :: [Pred] -> O ()
-createPreds = mapM_ createPred
+createPreds = mapM_ (\p -> do
+    createPred p
+    tell' "."
+    )
     where
         createPred :: Pred -> O ()
         createPred = \case
             Pred name ts -> helper name ts "pred"
             Bwd name ts -> helper name ts "bwd"
+            BwdImplication b1 b2 -> do
+                createPred b2
+                tell "\n\t"
+                tell "<- "
+                createPred b1
             StagePred _ -> error "You can't initialize a StagePred, don't put it in the state"
             ApplyPred p vars -> case p of
                 Bwd n ts -> do
                     appliedPred <- checkVars n ts vars
-                    tell' $ appliedPred ++ "."
+                    tell $ appliedPred
                 _ -> error "You can't apply a predicate to a variable in the top level"
 
 
 helper :: Name -> [Type] -> Name -> O ()
 helper name ts right =
     let ts' = map (\(Type a) -> a) ts
-    in tell' $ name ++ ' ':(intercalate " " ts') ++ " : " ++ right ++"."
+    in tell $ name ++ ' ':(intercalate " " ts') ++ " : " ++ right
 
 createConsts :: [Constructor] -> O ()
-createConsts cs = mapM_ (\(Constructor n ts t) ->
-                            helper n ts (show t))
+createConsts cs = mapM_ (\(Constructor n ts t) -> do
+                            helper n ts (show t)
+                            tell' ".")
                         cs
 
 --TODO Test

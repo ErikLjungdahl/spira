@@ -14,6 +14,7 @@ data Pred = Pred Name [Type]
           | Bwd Name [Type]
           | StagePred Name
           | ApplyPred Pred [Var]
+          | BwdImplication Pred Pred -- Has to be applyPred
 
 data Var = Pattern Name Type
          | AVar Constructor [Var]
