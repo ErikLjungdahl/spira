@@ -17,9 +17,9 @@ ticTacToe = do
     occupied <- newPredWithType "occupied" [player,nat,nat]
 
     -- Pick a free tile and make it occupied by the player
-    x <- newVar nat
-    y <- newVar nat
-    p <- newVar player
+    x <- newBinding nat
+    y <- newBinding nat
+    p <- newBinding player
     let impl = [applyPred free [x,y]] -* [applyPred occupied [p,x,y]]
     stage_play<- stage "play" True [impl] p
 
@@ -61,24 +61,23 @@ connectFour = do
     newFact maxFact [six]
 
     -- Pick a free tile and make it occupied by the player
-    x <- newVar nat
-    y <- newVar nat
-    p <- newVar player
-    m <- newVar nat
+    x <- newBinding nat
+    y <- newBinding nat
+    p <- newBinding player
+    m <- newBinding nat
     yP1 <- y+1
---    yLTE6 <- y<6
     let impl = [ applyPred free [x,y]
                , applyPred maxFact [m]
                , applyPred lt [y, m]
-               ]
-               -*
+               ] -*
                [ applyPred occupied [p,x,y]
-               , applyPred free [x,yP1] ]
+               , applyPred free [x,yP1]
+               ]
     stage_play<- stage "play" True [impl] p
 
-    -- A player wins if they have 3 occupied tiles in a row/colum/diagnal
-    rowrule <- inARow    4 occupied p
-    colrule <- inAColumn 4 occupied p
+    -- A player wins if they have 4 occupied tiles in a row/colum/diagnal
+    rowrule  <- inARow      4 occupied p
+    colrule  <- inAColumn   4 occupied p
     diarules <- inADiagonal 4 occupied p
     stage_win <- stage "win" False (rowrule:colrule:diarules) p
 
@@ -93,9 +92,8 @@ connectFour = do
     initialStageAndPlayer stage_play (head playernames)
 
     -- Set all tiles to free as initial state
+    --
     xs <- mapM (zero+) [0..6]
     addAppliedPredsToInit $
-        map (applyPred free)
-            [ [x , zero]
-                | x <- xs]
+        map (\x -> applyPred free [x, zero]) xs
     return ()

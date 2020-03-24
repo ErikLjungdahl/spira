@@ -66,7 +66,7 @@ stageDraw :: M ()
 stageDraw = do
     player <- gets player
     drawPred <- newPredWithType "draw" [player]
-    varPlayer <- newVar player
+    varPlayer <- newBinding player
     end <- newPred "end"
 
     let appliedDraw = applyPred drawPred [varPlayer]
@@ -186,8 +186,8 @@ initLT = do
     (nat,s,z) <- gets nats
     lt <- newFactType "lt" [nat, nat]
 
-    n <- newVar nat
-    m <- newVar nat
+    n <- newBinding nat
+    m <- newBinding nat
     np1 <- n+1
     mp1 <- m+1
 
@@ -201,8 +201,8 @@ initLTE = do
     (nat,s,z) <- gets nats
     lte <- newFactType "lte" [nat, nat]
 
-    n <- newVar nat
-    m <- newVar nat
+    n <- newBinding nat
+    m <- newBinding nat
     np1 <- n+1
     mp1 <- m+1
 
@@ -253,7 +253,7 @@ toStageWith (preToken,stagePred,_) v =
 fromStageToStage :: (Pred,Pred,Pred) -> (Pred,Pred,Pred) -> M ()
 fromStageToStage from to = do
     p <- gets player
-    pVar<- newVar p
+    pVar<- newBinding p
     transition (show (sndOf3 from) ++ "_to_" ++ show (sndOf3 to))
             $ (from `fromStageWith` pVar)
               -*
@@ -264,7 +264,7 @@ fromStageToStage from to = do
 fromFailedStageToStage :: (Pred,Pred,Pred) -> (Pred,Pred,Pred) -> M ()
 fromFailedStageToStage from to = do
     p <- gets player
-    pVar<- newVar p
+    pVar<- newBinding p
     transition (show (sndOf3 from) ++ "_failed_to_" ++ show (sndOf3 to))
             $ (from `toStageWith` pVar)
               -*
@@ -293,8 +293,8 @@ nextPlayerStage opp = do
     preToken <- newPredWithType ("pretoken_" ++ n)[player]
     posToken <- newPredWithType ("postoken_" ++ n)[player]
 
-    prevPlayer <- newVar player
-    nextPlayer <- newVar player
+    prevPlayer <- newBinding player
+    nextPlayer <- newBinding player
 
     let appliedPreToken = applyPred preToken [prevPlayer]
         appliedPosToken = applyPred posToken [nextPlayer]
@@ -333,8 +333,9 @@ applyVarTimes s x i = applyVar s [(applyVarTimes s x (i-1))]
 --     nbrOfPatterns could maybe be reset at end of stages/transitions
 --     Or perhaps it should be handled in the backend
 -- Returns a Pattern that can be patternmatched on.
-newVar :: Type -> M Var
-newVar t = do
+
+newBinding :: Type -> M Var
+newBinding t = do
     n <- gets nbrOfPatterns
     let l = (['A'..] !! n) :[]
     modify (\st -> st {nbrOfPatterns = n P.+ 1})
@@ -370,8 +371,8 @@ inARow n pred playerVar = do
     player <- gets player
     (nat, s, z) <- gets nats
 
-    x <- newVar nat
-    y <- newVar nat
+    x <- newBinding nat
+    y <- newBinding nat
 
     let occupiedAs = map (\i -> applyPred pred [playerVar, applyVarTimes s x i, y]) [0..n-1]
 
@@ -383,8 +384,8 @@ inAColumn n pred playerVar = do
     player <- gets player
     (nat, s, z) <- gets nats
 
-    x <- newVar nat
-    y <- newVar nat
+    x <- newBinding nat
+    y <- newBinding nat
 
     let occupiedAs = map (\i -> applyPred pred [playerVar, x, applyVarTimes s y i]) [0..n-1]
 
@@ -396,8 +397,8 @@ inADiagonal n pred playerVar = do
     player <- gets player
     (nat, s, z) <- gets nats
 
-    x <- newVar nat
-    y <- newVar nat
+    x <- newBinding nat
+    y <- newBinding nat
 
     let occupiedUp = map (\i -> applyPred pred [playerVar, applyVarTimes s x i, applyVarTimes s y i]) [0..n-1]
     let occupiedDown = map (\i -> applyPred pred [playerVar, applyVarTimes s x i, applyVarTimes s y (n-1-i)]) [0..n-1]
