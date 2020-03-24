@@ -50,12 +50,12 @@ connectFour = do
     --nats
     --players ["jennie","simon","erik","peter","nicke","oskar"]
     (nat,s,zero) <- gets nats
-    (player, playernames, stage_next_player) <- players ["simon","jennie","erik"]
+    (player, playernames, stage_next_player) <- players ["hugo","musen"]
 
     free <- newPredWithType "free" [nat,nat]
     occupied <- newPredWithType "occupied" [player,nat,nat]
 
-    lte <- initLTE
+    lt <- initLT
     maxFact  <- newFactType "max" [nat]
     six <- zero+6
     newFact maxFact [six]
@@ -69,7 +69,7 @@ connectFour = do
 --    yLTE6 <- y<6
     let impl = [ applyPred free [x,y]
                , applyPred maxFact [m]
-               , applyPred lte [y, m]
+               , applyPred lt [y, m]
                ]
                -*
                [ applyPred occupied [p,x,y]
