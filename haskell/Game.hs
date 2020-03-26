@@ -84,6 +84,12 @@ newFactType s tx = do
     let p = Bwd s tx
     addPred p
     return p
+-- Creates a Fact Pred
+newFactTypeWithNames :: String -> [Type] -> [Name] -> M Pred
+newFactTypeWithNames s tx names = do
+    p <- newFactType s tx
+    modify $ \st -> st {columnNames = insert p names $ columnNames st}
+    return p
 
 -- Creates a fact.
 -- Pred should be Bwd
@@ -159,7 +165,7 @@ addPred g = do
 players :: [String] -> M (Type, [Var], (Pred,Pred,Pred),Pred)
 players names = do
     player <- gets player -- newType "player"
-    opp <- newFactType "opp" [player, player]
+    opp <- newFactTypeWithNames "opp" [player, player] ["_","Opponent"]
     players <- mapM (\n -> newEmptyConstructor n player) ("free":names)
     --initiateOpponents names names opp
 
@@ -228,7 +234,7 @@ stage :: Name -> IsInteractive -> [Implication] -> Var -> M (Pred,Pred,Pred)
 stage n isInteractive impls playerVar= do
     player <- gets player
     preToken <- if isInteractive
-        then newPredWithTypeAndNames ("pretoken_" ++ n)[player] ["turn"]
+        then newPredWithTypeAndNames ("pretoken_" ++ n)[player] ["Turn"]
         else newPredWithType ("pretoken_" ++ n)[player]
     posToken <- newPredWithType ("postoken_" ++ n)[player]
 
