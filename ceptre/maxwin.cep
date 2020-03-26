@@ -1,0 +1,112 @@
+% "Max points win" example with 3 players
+% and dummy game of "gain one or two points"
+
+% Natural numbers
+nat     : type.
+z       : nat.
+s   nat : nat.
+
+% Three players
+player : type.
+a : player.
+b : player.
+c : player.
+
+% nat < nat
+less nat nat : bwd.
+lessZ : less z (s Y).       % 0 < 1+anything
+lessS : less (s Y) (s X)    % 1+y < 1+x  if  y < x
+      <- less Y X.
+
+% General stuff
+draw         : pred.
+quit         : pred.
+drawtoken    : pred.
+win player   : pred.
+turn player  : pred.
+token player : pred.
+points player nat : pred.
+
+% turn order: a -> b -> c
+after player player : bwd.
+after a b.
+after b c.
+after c a.
+
+% Play dummy stage, gain one point or gain two points
+stage play = {
+gain/one
+    : turn P
+    * points P X
+    * after P P'
+    -o points P (s X)
+    * token P'.
+gain/two
+    : turn P
+    * points P X
+    * after P P'
+    -o points P (s (s X))
+    * token P'.
+} #interactive play.
+
+go/quit
+    : qui
+    * stage play
+    -o stage quit.
+
+% Choose to end the game or continue
+stage quit = {
+quit
+    : token P
+    -o quit.
+go
+    : token P
+    -o turn P.
+} #interactive quit.
+
+% Branching, continue or quit
+go/win
+    : qui
+    * $quit
+    * stage quit
+    -o stage win.
+go/play
+    : qui
+    * $turn P
+    * stage quit
+    -o stage play.
+
+% The player with most points wins
+stage win = {
+win
+    : points P X
+    * points P' Y
+    * points P'' Z
+    * less Y X
+    * less Z X
+    * drawtoken
+    -o win P.
+}
+
+% If none won, we declare draw
+% Note: everyone draws, even if one had lower than the other two.
+go/draw
+    : qui
+    * drawtoken
+    * stage win
+    -o stage draw.
+
+stage draw = {
+draw
+    : drawtoken
+    -o draw.
+}
+
+context init =
+{turn a
+,points a z
+,points b z
+,points c z
+,drawtoken}
+
+#trace _ play {init}.
