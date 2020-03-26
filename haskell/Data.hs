@@ -15,13 +15,13 @@ data Pred = Pred Name [Type]
           | StagePred Name
           | ApplyPred Pred [Var]
           | BwdImplication Pred Pred -- Has to be applyPred
-
-data Var = Pattern Name Type
+    deriving (Eq, Ord)
+data Var = Binding Name Type
          | AVar Constructor [Var]
-         deriving (Show)
+         deriving (Show, Eq, Ord)
 
 data Constructor = Constructor Name [Type] Type -- ex: s nat : nat , z : nat
-    deriving (Show)
+    deriving (Show, Eq, Ord)
 
 data Initial = Initial
                     Name -- StagePred Initial stage
@@ -30,7 +30,7 @@ data Initial = Initial
 
 type Name = String
 data Type = Type Name -- Det som användaren genererar.
-    deriving (Eq)
+    deriving (Eq, Ord)
 instance Show Type where
     show (Type s) = s
 

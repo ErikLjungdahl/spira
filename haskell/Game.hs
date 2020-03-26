@@ -4,13 +4,16 @@
 module Game where
 --TODO Only export the functions that we want the user to be able to use.
 
-import Prelude hiding (pred, init, (+))
+import Prelude hiding (pred, init, (+), lookup)
 import qualified Prelude as P
 
 import Data
-import Data.List hiding (init)
+import Data.List (intercalate)
 import Control.Monad.Writer
 import Control.Monad.State
+import Data.Map.Lazy (insert, lookup, Map, empty)
+
+import Debug.Trace
 
 type Output = String
 
@@ -24,11 +27,12 @@ data St = St
     , games  :: [Game]
     , initStage :: Maybe Name
     , initialPreds :: [Pred]
-    , nbrOfPatterns :: Int
+    , nbrOfBindings :: Int
     , player :: Type
     , nats :: (Type,Constructor,Var)
     , turn :: Pred
     , drawStage :: (Pred,Pred,Pred)
+    , columnNames :: Map Pred [Name]
     }
 
 type M a = State St a
@@ -44,7 +48,8 @@ runGame g fp =
             , games  = []
             , initStage = Nothing
             , initialPreds = []
-            , nbrOfPatterns = 0
+            , nbrOfBindings = 0
+            , columnNames = empty
             }
         default_config :: M ()
         default_config = do
@@ -73,12 +78,6 @@ stageDraw = do
     drawStage <- stage "draw" False [[appliedDraw] -* [end]] varPlayer
     modify (\st -> st {drawStage = drawStage})
 
-newPred :: String -> M Pred
-newPred s = do
-    let p = Pred s []
-    addPred p
-    return p
-
 -- Creates a Fact Pred
 newFactType :: String -> [Type] -> M Pred
 newFactType s tx = do
@@ -88,7 +87,7 @@ newFactType s tx = do
 
 -- Creates a fact.
 -- Pred should be Bwd
--- [Var] can contain Patterns
+-- [Var] can contain Bindings
 newFact :: Pred -> [Var] -> M ()
 newFact b vars = do
     let appliedFact = applyPred b vars
@@ -105,6 +104,13 @@ emitFactImpl p = case p of
     BwdImplication _ _ -> addPred p
     _ -> error "Not a BwdImplication"
 
+
+newPred :: String -> M Pred
+newPred s = do
+    let p = Pred s []
+    addPred p
+    return p
+
 --TODO check that Pred doesn't already exist
 newPredWithType :: Name -> [Type] -> M Pred
 newPredWithType s xt = do
@@ -112,6 +118,11 @@ newPredWithType s xt = do
     addPred p
     return p
 
+newPredWithTypeAndNames :: Name -> [Type] -> [Name] -> M Pred
+newPredWithTypeAndNames s xt names = do
+    p <- newPredWithType s xt
+    modify $ \st -> st {columnNames = insert p names $ columnNames st}
+    return p
 
 --TODO check that Constructor doesn't already exist
 -- Creates a Constructor which can be used in `applyVar` to create an instance of it.
@@ -165,7 +176,7 @@ players names = do
             initiatePlayers ns p
 
         --initiateOpponents []      n2  opp = return ()
-        --initiateOpponents (n1:ns) (n2:n2s) opp = newPattern n1 n2 opp
+        --initiateOpponents (n1:ns) (n2:n2s) opp = newBinding n1 n2 opp
 
         --opponentHelper you []      = return ()
         --opponentHelper you (n2:ns) = undefined
@@ -216,7 +227,9 @@ initLTE = do
 stage :: Name -> IsInteractive -> [Implication] -> Var -> M (Pred,Pred,Pred)
 stage n isInteractive impls playerVar= do
     player <- gets player
-    preToken <- newPredWithType ("pretoken_" ++ n)[player]
+    preToken <- if isInteractive
+        then newPredWithTypeAndNames ("pretoken_" ++ n)[player] ["turn"]
+        else newPredWithType ("pretoken_" ++ n)[player]
     posToken <- newPredWithType ("postoken_" ++ n)[player]
 
     let appliedPreToken = applyPred preToken [playerVar]
@@ -331,16 +344,16 @@ applyVarTimes s x i = applyVar s [(applyVarTimes s x (i-1))]
 
 
 --TODO Max 26 Vars currently
---     nbrOfPatterns could maybe be reset at end of stages/transitions
+--     nbrOfBindings could maybe be reset at end of stages/transitions
 --     Or perhaps it should be handled in the backend
--- Returns a Pattern that can be patternmatched on.
+-- Returns a Binding that can be patternmatched on.
 
 newBinding :: Type -> M Var
 newBinding t = do
-    n <- gets nbrOfPatterns
+    n <- gets nbrOfBindings
     let l = (['A'..] !! n) :[]
-    modify (\st -> st {nbrOfPatterns = n P.+ 1})
-    return $ Pattern l t
+    modify (\st -> st {nbrOfBindings = n P.+ 1})
+    return $ Binding l t
 
 -- Sets values/patterns to a Pred, and return an AppliedPred
 applyPred :: Pred -> [Var] -> Pred
@@ -428,7 +441,8 @@ createGameFromSt st = do
     tell' "\n% PREDS AND BWDS"
     createPreds  (reverse $ preds  st)
     tell' "\n% STAGES AND TRANSITIONS"
-    createGames  (reverse $ games  st)
+    createGames (columnNames st)
+                (reverse $ games  st)
     tell' "\n% INITIAL"
     case initStage st of
         Nothing -> return () --TODO give error instead -- error "You must have a initial context"
@@ -475,14 +489,16 @@ createConsts cs = mapM_ (\(Constructor n ts t) -> do
                         cs
 
 --TODO Test
-createGames :: [Game] -> O ()
-createGames = mapM_ createGame
+createGames :: Map Pred [Name] -> [Game] -> O ()
+createGames colnames= mapM_ createGame
     where
         createGame :: Game -> O ()
         createGame = \case
             Stage n impls isInteractive -> do
                 tell' $ "stage " ++ n ++ " = {"
                 mapM_ (\(impl , ident) -> do
+                            when isInteractive $ do
+                                implicationsColNames ident impl
                             tell' ident
                             createImplication impl
                       )
@@ -507,13 +523,46 @@ createGames = mapM_ createGame
                 tell $ intercalate "\n\t* " rs'
                 tell' "."
 
+        implicationsColNames :: String -> Implication -> O ()
+        implicationsColNames ident (Implication ls _) = do
+            let res = foldl (predColNames) [] ls
+                colns = [cn | (b,cn) <- res]
+            tell' $ "%% " ++ ident ++ " " ++ (intercalate " " colns)
+            return ()
+
+        predColNames :: [(Name,String)] -> Pred -> [(Name,String)]
+        predColNames context = \case
+            ApplyPred p vars -> let
+                helper cns =
+                    foldl (\ctx vc ->
+                        case bindingAndColname vc of
+                            Just (b,c) ->
+                                if b `elem` map fst ctx
+                                    then ctx
+                                    else  ctx ++ [(b,c)]
+                            Nothing -> ctx
+                        )
+                        context
+                        (zip vars cns)
+                in
+                case lookup p colnames of
+                    Just cns -> helper cns
+                    Nothing -> helper (repeat "_")
+            _ -> context
+            where
+                bindingAndColname :: (Var, String) -> Maybe (Name, String)
+                bindingAndColname (v,cname) = case v of
+                        Binding n _ -> Just (n,cname)
+                        AVar _ [] -> Nothing
+                        AVar _ (v':vs) -> traceShow (length vs) $ bindingAndColname (v',cname)
+
 -- Create the ceptre string from a Pred
 --TODO Test
 checkVars:: Name -> [Type] -> [Var] -> O String
 checkVars n ts vars = let
     checkVar :: Type -> Var -> O String
     checkVar t = \case
-        Pattern n tp ->
+        Binding n tp ->
             if (t /= tp)
             then error "Wrong type when applying"
             else return n
