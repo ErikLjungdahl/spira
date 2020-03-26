@@ -145,11 +145,11 @@ addPred :: Pred -> M ()
 addPred g = do
     modify (\st -> st { preds = g : preds st})
 
-players :: [String] -> M (Type, [Var], (Pred,Pred,Pred))
+players :: [String] -> M (Type, [Var], (Pred,Pred,Pred),Pred)
 players names = do
     player <- gets player -- newType "player"
     opp <- newFactType "opp" [player, player]
-    players <- mapM (\n -> newEmptyConstructor n player) names
+    players <- mapM (\n -> newEmptyConstructor n player) ("free":names)
     --initiateOpponents names names opp
 
     -- TODO more general
@@ -157,7 +157,7 @@ players names = do
     newFact opp [last players, head players]
 
     nps <- nextPlayerStage opp
-    return (player,players, nps)
+    return (player,players, nps, opp)
     where
         initiatePlayers [] p = return ()
         initiatePlayers (n:ns) p = do
@@ -194,8 +194,9 @@ initLT = do
     newFact lt [z, np1]
     emitFactImpl $ (applyPred lt [n, m]) --> (applyPred lt [np1,mp1])
     return lt
--- Initias the LT operator (less-than)
--- Returns the predicate "lt" which needs to be applied to something to be used.
+-- Initias the LTE operator (less-than-or-equal) (<=)
+-- Returns the predicate "lte" which needs to be applied to something to be used.
+--TODO Make helper function so this isn't a copy pasta of initLT
 initLTE :: M Pred
 initLTE = do
     (nat,s,z) <- gets nats
