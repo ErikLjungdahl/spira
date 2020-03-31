@@ -130,7 +130,7 @@ move/1
     piece <- newType "piece"
     horse <- newEmptyConstructor "horse" piece
     nothing  <- newEmptyConstructor "nothing"  piece
-    tile <- newPredWithType "tile" [player, piece, nat, nat]
+    tile <- newPredWithTypeAndNames "tile" [player, piece, nat, nat] ["Turn", "Piece", "Col", "Row"]
 
     let free = head playernames
     x <- newBinding nat
