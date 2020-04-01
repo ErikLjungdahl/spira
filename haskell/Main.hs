@@ -126,7 +126,7 @@ move/1
 
 
     (nat,suc,zero) <- gets nats
-    (player, playernames, stage_next_player, opp) <- players ["hugo","musen"]
+    (player, playernames, stage_next_player, oppMaybe) <- players ["hugo","musen"]
     piece <- newType "piece"
     horse <- newEmptyConstructor "horse" piece
     nothing  <- newEmptyConstructor "nothing"  piece
@@ -139,30 +139,34 @@ move/1
     p2 <- newBinding player
     whatever <- newBinding piece
 
-    let horseImpl (rowB, rowA, colB, colA) =
-                [ applyPred opp [p, p2]
-                , applyPred tile [p2, whatever, rowA, colA]
+    -- Horses move.
+    let horseImpl [(rowB, colB),(rowA, colA)] =
+                [ applyPred oppMaybe [p, p2] -- p2 can be either opponent or free tile
                 , applyPred tile [p, horse, rowB ,colB]
+                , applyPred tile [p2, whatever, rowA, colA]
                 ] -*
                 [ applyPred tile [p  , horse, rowA, colA]
                 , applyPred tile [free, nothing, rowB ,colB]
                 ]
+    -- The different moves a horse can do, moduled in positive coordinates
+    -- TODO Desribe as one coordinate and as mirrors of that, then turn it into positive coordinates
     let coordinates =
-            [(0,1,0,2)
-            ,(0,1,2,0)
-            ,(0,2,0,1)
-            ,(0,2,1,0)
-            ,(1,0,0,2)
-            ,(1,0,2,0)
-            ,(2,0,0,1)
-            ,(2,0,1,0)
+        --   Before-After
+            [[(0,0),(1,2)]
+            ,[(0,2),(1,0)]
+            ,[(0,0),(2,1)]
+            ,[(0,1),(2,0)]
+            ,[(1,0),(0,2)]
+            ,[(1,2),(0,0)]
+            ,[(2,0),(0,1)]
+            ,[(2,1),(0,0)]
             ]
-    appliedBindings <- mapM (\(rowB,rowA,colB,colA) -> do
-        r1<-x+rowB
-        r2<-x+rowA
-        r3<-y+colB
-        r4<-y+colA
-        return (r1,r2,r3,r4)
+    appliedBindings <- mapM (\cds ->
+        mapM (\(r,c) -> do
+              a <- x+r
+              b <- y+c
+              return (a,b)
+             ) cds
         ) coordinates
     let impls = map horseImpl appliedBindings
     stage_play <- stage "play" True impls p
