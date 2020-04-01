@@ -37,15 +37,15 @@ def modify(line, dic):
 	tmp = re.sub(r"\([sz].*?\)", lambda m: str(m.group().count("s")), line)
 	t = tmp.replace(")","").replace("(","").replace(" z"," 0")
 	list_t = t.split(" ")
-	list_t[1] = list_t[1].split("/")[0]
-	#print(list_t)
-	dic_list = dic.get(list_t[1])
-	st = list_t[0] + " "
-	for i,elem in enumerate(list_t[2:]):
-		kol_name = dic_list[i]
-		if not kol_name == "_":
-			st = st + kol_name + ": " + elem + "  "
-	return st
+	if not re.match(r'0',list_t[0]):
+		dic_list = dic.get(list_t[1])
+		st = list_t[0] + " "
+		for i,elem in enumerate(list_t[2:]):
+			kol_name = dic_list[i]
+			if not kol_name == "_":
+				st = st + kol_name + ": " + elem + "  "
+		return st
+	return "0:"
 
 # Add every case we don't write out.
 def keep(line):
@@ -60,10 +60,10 @@ def create_dict_move(filepath):
 		for row in f:
 			row = row.strip()
 			if(re.match(r'%%', row)):
-				print(row)
+				print("cdm row:",row)
 				list_row = row.split(" ")[1:]
 				dic[list_row[0]] = list_row[1:]
-				print(dic)
+				print("cdm dic:",dic)
 	return dic
 
 main()

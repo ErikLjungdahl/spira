@@ -5,7 +5,7 @@ import Prelude hiding ((+))
 import Data.List
 
 main :: IO ()
-main = runGame chess "game.cep"
+main = runGame connectFour "game.cep"
 
 ticTacToe :: M ()
 ticTacToe = do
@@ -25,9 +25,9 @@ ticTacToe = do
     stage_play<- stage "play" True [impl] p
 
     -- A player wins if they have 3 occupied tiles in a row/colum/diagnal
-    rowrule <- inARow    5 occupied p
-    colrule <- inAColumn 5 occupied p
-    diarules <- inADiagonal 5 occupied p
+    rowrule <- inARow    3 occupied p
+    colrule <- inAColumn 3 occupied p
+    diarules <- inADiagonal 3 occupied p
     stage_win <- stage "win" False (rowrule:colrule:diarules) p
 
     -- After play we check win condition
@@ -42,7 +42,7 @@ ticTacToe = do
 
     -- Set all tiles to free as initial state
     addAppliedPredsToInit $
-        map (applyPred free) [[applyVarTimes s z x ,applyVarTimes s z y] | x <- [0..19], y <- [0..19]]
+        map (applyPred free) [[applyVarTimes s z x ,applyVarTimes s z y] | x <- [0..2], y <- [0..2]]
     return ()
 
 

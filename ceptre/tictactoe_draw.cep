@@ -30,6 +30,7 @@ play
     * token B.           % Token means this player will have a turn
 }
 #interactive play.
+%% play player _ row col
 
 % We got a token, so someone made their turn.
 go/win
