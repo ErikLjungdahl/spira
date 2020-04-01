@@ -316,12 +316,11 @@ nextPlayerStage opp = do
     prevPlayer <- newBinding player
     nextPlayer <- newBinding player
 
-    let appliedPreToken = applyPred preToken [prevPlayer]
-        appliedPosToken = applyPred posToken [nextPlayer]
-        appliedOpponent = applyPred opp [prevPlayer,nextPlayer]
-        impls = [Implication
-                    [appliedPreToken, appliedOpponent]
-                    [appliedPosToken]
+    let impls = [Implication
+                    [ applyPred preToken [prevPlayer]
+                    , applyPred opp [prevPlayer,nextPlayer]
+                    ]
+                    [ applyPred posToken [nextPlayer]]
                 ]
         s = Stage n impls False
     addGame s
