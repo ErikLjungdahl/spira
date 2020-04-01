@@ -5,7 +5,7 @@ import Prelude hiding ((+))
 import Data.List
 
 main :: IO ()
-main = runGame chess "game.cep"
+main = runGame othello "game.cep"
 
 ticTacToe :: M ()
 ticTacToe = do
@@ -25,9 +25,9 @@ ticTacToe = do
     stage_play<- stage "play" True [impl] p
 
     -- A player wins if they have 3 occupied tiles in a row/colum/diagnal
-    rowrule <- inARow    5 occupied p
-    colrule <- inAColumn 5 occupied p
-    diarules <- inADiagonal 5 occupied p
+    rowrule <- inARow    3 occupied p
+    colrule <- inAColumn 3 occupied p
+    diarules <- inADiagonal 3 occupied p
     stage_win <- stage "win" False (rowrule:colrule:diarules) p
 
     -- After play we check win condition
@@ -42,7 +42,7 @@ ticTacToe = do
 
     -- Set all tiles to free as initial state
     addAppliedPredsToInit $
-        map (applyPred free) [[applyVarTimes s z x ,applyVarTimes s z y] | x <- [0..19], y <- [0..19]]
+        map (applyPred free) [[applyVarTimes s z x ,applyVarTimes s z y] | x <- [0..2], y <- [0..2]]
     return ()
 
 
@@ -189,4 +189,74 @@ move/1
         map (\(x,y) -> applyPred tile [free, nothing, x ,y]) xys
     three <- zero+3
     addAppliedPredsToInit [(applyPred tile [player1, horse,three,three])]
+    return ()
+
+
+
+othello :: M ()
+othello = do
+    (nat,suc,zero) <- gets nats
+    (player, playernames, stage_next_player, opp) <- players ["black","white"]
+    tile <- newPredWithTypeAndNames "tile" [player, nat, nat] ["Color", "Col", "Row"]
+    noone <- newEmptyConstructor "free" player
+    lastPlaced <- newPredWithType "lastPlace" [player,nat,nat]
+
+    let black = head playernames
+    let white = last playernames
+
+    x <- newBinding nat
+    y <- newBinding nat
+    p <- newBinding player
+    p2 <- newBinding player
+
+    let place [startPos, middlePos, endPos] =
+                [ opp  `applyPred` [p, p2]
+                , tile `applyPred` (noone : startPos)
+                , tile `applyPred` (p2    : middlePos)  --TODO make persistant
+                , tile `applyPred` (p     : endPos) --TODO make persistant
+                ] -*
+                [ tile `applyPred`       (p : startPos)
+                , lastPlaced `applyPred` (p : startPos)
+                -- Keep the pieces, REMOVE ONES TODOS ABOVE ARE FIXED
+                , tile `applyPred` (p2 : middlePos)
+                , tile `applyPred` (p  : endPos)
+                ]
+    let coordinates = half ++ map reverse half
+            where half =
+                    [[(0,0),(1,0),(2,0)]
+                    ,[(0,0),(1,1),(2,2)]
+                    ,[(0,0),(0,1),(0,2)]
+                    ,[(2,0),(1,1),(0,2)]
+                    ]
+    allPossiblePositions <-
+        mapM (\positions ->
+            mapM (\pos -> do
+                x' <- x + fst pos
+                y' <- y + snd pos
+                return [x', y']
+            ) positions
+        ) coordinates
+
+
+    let impls = map place (allPossiblePositions)
+    stage_play <- stage "play" True impls p
+
+
+    xys <- mapM (\(x,y) -> do
+        x'<- zero+x
+        y'<- zero+y
+        return (x',y')
+        ) [(x,y) | x <-[0..7], y <- [0..7]]
+    addAppliedPredsToInit $
+        map (\(x,y) -> applyPred tile [noone, x ,y]) xys
+    three <- zero+3
+    four <- zero+4
+    addAppliedPredsToInit [(applyPred tile [black,three,four])]
+    addAppliedPredsToInit [(applyPred tile [black,four ,three])]
+    addAppliedPredsToInit [(applyPred tile [white,three,three])]
+    addAppliedPredsToInit [(applyPred tile [white,four ,four])]
+
+    initialStageAndPlayer stage_play (black)
+
+
     return ()

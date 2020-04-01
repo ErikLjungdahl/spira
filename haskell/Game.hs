@@ -166,7 +166,8 @@ players :: [String] -> M (Type, [Var], (Pred,Pred,Pred),Pred)
 players names = do
     player <- gets player -- newType "player"
     opp <- newFactTypeWithNames "opp" [player, player] ["_","Opponent"]
-    players <- mapM (\n -> newEmptyConstructor n player) ("free":names)
+    players <- mapM (\n -> newEmptyConstructor n player) (names)
+    -- noone <- newEmptyConstructor "free" player
     --initiateOpponents names names opp
 
     -- TODO more general
@@ -559,7 +560,7 @@ createGames colnames= mapM_ createGame
                 bindingAndColname (v,cname) = case v of
                         Binding n _ -> Just (n,cname)
                         AVar _ [] -> Nothing
-                        AVar _ (v':vs) -> traceShow (length vs) $ bindingAndColname (v',cname)
+                        AVar _ (v':vs) -> bindingAndColname (v',cname)
 
 -- Create the ceptre string from a Pred
 --TODO Test
