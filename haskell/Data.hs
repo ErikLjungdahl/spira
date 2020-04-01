@@ -15,6 +15,7 @@ data Pred = Pred Name [Type]
           | StagePred Name
           | ApplyPred Pred [Var]
           | BwdImplication Pred Pred -- Has to be applyPred
+          | Persistent Pred
     deriving (Eq, Ord)
 data Var = Binding Name Type
          | AVar Constructor [Var]

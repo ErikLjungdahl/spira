@@ -162,6 +162,10 @@ addPred :: Pred -> M ()
 addPred g = do
     modify (\st -> st { preds = g : preds st})
 
+-- Makes a predicate Persistent in the left side of linear implication (-*) 
+makePersistent ::  Pred ->  Pred
+makePersistent p = Persistent p
+
 players :: [String] -> M (Type, [Var], (Pred,Pred,Pred),Pred)
 players names = do
     player <- gets player -- newType "player"
@@ -598,6 +602,10 @@ createAppliedPred = \case
         StagePred _-> error "Can't apply something to a Stage predicate"
         -- TODO Can this be supported? Does it make sense?
         ApplyPred _ _-> error "Applying something to an already applied thing isn't supported"
+    Persistent p -> do
+        tell "$"
+        createAppliedPred p
+    BwdImplication _ _ -> error "Can't create BwdImplication in transition/stage"
 
 
 --TODO Test
