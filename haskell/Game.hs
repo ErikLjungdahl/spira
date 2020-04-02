@@ -4,8 +4,7 @@
 module Game where
 --TODO Only export the functions that we want the user to be able to use.
 
-import Prelude hiding (pred, init, (+), lookup)
-import qualified Prelude as P
+import Prelude hiding (pred, init, lookup)
 
 import Data
 import Data.List (intercalate)
@@ -29,13 +28,15 @@ data St = St
     , initialPreds :: [Pred]
     , nbrOfBindings :: Int
     , player :: Type
-    , nats :: (Type,Constructor,Var)
+    , nats :: (Type,Const,Var)
     , turn :: Pred
     , drawStage :: (Pred,Pred,Pred)
     , columnNames :: Map Pred [Name]
     }
 
 type M a = State St a
+
+type Const = [Var] -> Var
 
 runGame :: M () -> FilePath -> IO ()
 runGame g fp =
@@ -132,18 +133,18 @@ newPredWithTypeAndNames s xt names = do
 
 --TODO check that Constructor doesn't already exist
 -- Creates a Constructor which can be used in `applyVar` to create an instance of it.
-newConstructor :: Name -> [Type] -> Type -> M Constructor
+newConstructor :: Name -> [Type] -> Type -> M Const
 newConstructor s xt t = do
     let c = Constructor s xt t
     modify (\st -> st { consts = c : consts st})
-    return c
+    return (\vars -> AVar c vars)
 
 -- Special case of `newConstructor`, applies the Constucor to an empty list
 -- returns a Var
 newEmptyConstructor :: Name -> Type -> M Var
 newEmptyConstructor n t = do
     constructor <- newConstructor n [] t
-    return $ applyVar constructor []
+    return $ constructor []
 
 --TODO check that type doesn't already exist
 -- Creates a new type which can be used when creating predicates and Constructors
@@ -162,11 +163,16 @@ addPred :: Pred -> M ()
 addPred g = do
     modify (\st -> st { preds = g : preds st})
 
+-- Makes a predicate Persistent in the left side of linear implication (-*)
+makePersistent ::  Pred ->  Pred
+makePersistent p = Persistent p
+
 players :: [String] -> M (Type, [Var], (Pred,Pred,Pred),Pred)
 players names = do
     player <- gets player -- newType "player"
     opp <- newFactTypeWithNames "opp" [player, player] ["_","Opponent"]
-    players <- mapM (\n -> newEmptyConstructor n player) ("free":names)
+    players <- mapM (\n -> newEmptyConstructor n player) (names)
+    -- noone <- newEmptyConstructor "free" player
     --initiateOpponents names names opp
 
     -- TODO more general
@@ -205,8 +211,8 @@ initLT = do
 
     n <- newBinding nat
     m <- newBinding nat
-    np1 <- n+1
-    mp1 <- m+1
+    np1 <- n<+1
+    mp1 <- m<+1
 
     newFact lt [z, np1]
     emitFactImpl $ (applyPred lt [n, m]) --> (applyPred lt [np1,mp1])
@@ -221,8 +227,8 @@ initLTE = do
 
     n <- newBinding nat
     m <- newBinding nat
-    np1 <- n+1
-    mp1 <- m+1
+    np1 <- n<+1
+    mp1 <- m<+1
 
     newFact lte [z, n]
     emitFactImpl $ (applyPred lte [n, m]) --> (applyPred lte [np1,mp1])
@@ -336,12 +342,12 @@ applyVar c vs = AVar c vs
 
 -- Applies a constructor to a Var n times,
 -- useful for recursive constructors such as suc
-applyVarTimes :: Constructor -> Var -> Int -> Var
+applyVarTimes :: Const -> Var -> Int -> Var
 applyVarTimes s x 0 = x
-applyVarTimes s x i = applyVar s [(applyVarTimes s x (i-1))]
+applyVarTimes s x i = s [(applyVarTimes s x (i-1))]
 
-(+) :: Var -> Int -> M Var
-(+) v n = do
+(<+) :: Var -> Int -> M Var
+(<+) v n = do
     (nat, s, z) <- gets nats
     let appliedVar = applyVarTimes s v n
     return appliedVar
@@ -357,7 +363,7 @@ newBinding :: Type -> M Var
 newBinding t = do
     n <- gets nbrOfBindings
     let l = (['A'..] !! n) :[]
-    modify (\st -> st {nbrOfBindings = n P.+ 1})
+    modify (\st -> st {nbrOfBindings = n + 1})
     return $ Binding l t
 
 -- Sets values/patterns to a Pred, and return an AppliedPred
@@ -559,7 +565,7 @@ createGames colnames= mapM_ createGame
                 bindingAndColname (v,cname) = case v of
                         Binding n _ -> Just (n,cname)
                         AVar _ [] -> Nothing
-                        AVar _ (v':vs) -> traceShow (length vs) $ bindingAndColname (v',cname)
+                        AVar _ (v':vs) -> bindingAndColname (v',cname)
 
 -- Create the ceptre string from a Pred
 --TODO Test
@@ -579,7 +585,7 @@ checkVars n ts vars = let
             else let checkedvars' = intercalate " " checkedvars
                  in return $ "(" ++ n ++ " " ++ checkedvars' ++ ")"
     in do
-    when (length ts /= length vars) $ error "Wrong number of vars applied to a pred"
+    when (length ts /= length vars) $ error $ "Wrong number of vars applied to a pred." ++ " Pred: " ++ n ++ ", Vars:" ++ show vars
     apreds <- zipWithM checkVar ts vars
     return $ n ++ ' ':(intercalate " " apreds)
 
@@ -597,6 +603,11 @@ createAppliedPred = \case
         StagePred _-> error "Can't apply something to a Stage predicate"
         -- TODO Can this be supported? Does it make sense?
         ApplyPred _ _-> error "Applying something to an already applied thing isn't supported"
+    Persistent p -> do
+        p' <- createAppliedPred p
+        return ('$':p')
+
+    BwdImplication _ _ -> error "Can't create BwdImplication in transition/stage"
 
 
 --TODO Test
