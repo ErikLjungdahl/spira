@@ -1,22 +1,29 @@
 import subprocess
 import re
 import sys
+from sys import stdin
+import os
 
 def main():
 	is_start = True
 	is_finished = False
+	is_time_to_choose = True
 	fp_ceptre = sys.argv[1]
 	fp_game = sys.argv[2]
+	line_pointer = 0
 	dic = create_dict_move(fp_game)
 	cmd = [fp_ceptre, fp_game]
-	p = subprocess.Popen(cmd, stdout=subprocess.PIPE, bufsize=1)
+	p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+	print("BEFORE LOOP")
 	for line in iter(p.stdout.readline, ""):
 		# For removing the starting rows
 		if line == "#trace ...\n":
 			is_start = False
 		# Removes the ?- line
-		elif re.match(r'\?-',line):
+		elif re.match(r'\?-',line) and is_time_to_choose:
 			print(line.rstrip()+"\n")
+			is_time_to_choose = False
+			line_pointer = create_board(line_pointer)
 		# Checks for the winner and print the name + won
 		elif re.match(r'{qui',line):
 			#print(re.search(r"(x?<=\bwin\s)(\w+)", line).group() + " won\n")
@@ -25,11 +32,38 @@ def main():
 		# changes the (s (s (s z))) + gives name to parameters
 		elif re.match(r'\d*: ',line):
 			print(modify(line, dic).rstrip())
+			is_time_to_choose = True
 		# Prints the line as it is but remove start and end
 		elif keep(line) and not is_start and not is_finished:
 			print(line.rstrip())
+		
+	print("BEFORE CLOSE")
 	p.stdout.close()
 	p.wait()
+
+
+
+def create_board(line_pointer, ):
+	print("----------------------------")
+
+	line = open("log.txt").readlines()
+
+	for i,l in enumerate (line[line_pointer::]):
+		if(re.match('---- {\(stage play\)',l)) : 
+			print(i, l)
+			line_pointer += i+1
+
+	print("---------------------------- line_pointer",line_pointer)
+
+	return line_pointer
+
+
+
+
+
+
+
+
 
 # Modifies the (s (s z)) -> int.
 # Also gives the names to each kolumn/parameter/dont know what it is called
