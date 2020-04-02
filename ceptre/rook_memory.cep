@@ -1,0 +1,52 @@
+% Rook example
+% Warning: May not work, attempts to allocate too much memory.
+
+% Natural numbers
+nat     : type.
+z       : nat.
+s   nat : nat.
+
+rook     nat nat : pred.
+free     nat nat : pred.
+occupied nat nat : pred.
+
+valid/rook nat nat : bwd.
+valid/rookE : valid/rook (s X) Y
+            <- free (s X) Y
+            <- valid/rook X Y.
+
+stage play = {
+move/rook
+    : rook X Y
+    * occupied X Y
+    * valid/rook X' Y'
+    -o rook X' Y'
+    * occupied X' Y'.
+} #interactive play.
+
+% Init board to free
+context all_free = {                      % (x,y)
+free    z               z,                % (0,0)
+free    z               (s z),            % (0,1)
+free    z               (s (s z)),        % (0,2)
+%free    z               (s (s (s z))),    % (0,3)
+free    (s z)           z,                % (1,0)
+free    (s z)           (s z),            % (1,1)
+free    (s z)           (s (s z)),        % (1,2)
+%free    (s z)           (s (s (s z))),    % (1,3)
+free    (s (s z))       z,                % (2,0)
+free    (s (s z))       (s z),            % (2,1)
+free    (s (s z))       (s (s z))%,        % (2,2)
+%free    (s (s z))       (s (s (s z))),    % (2,3)
+%free    (s (s (s z)))   z,                % (2,0)
+%free    (s (s (s z)))   (s z),            % (2,1)
+%free    (s (s (s z)))   (s (s z)),        % (2,2)
+%free    (s (s (s z)))   (s (s (s z)))     % (2,3)
+}
+
+% Initial context
+context init =
+{rook z z
+,occupied z z}
+
+#trace _ play {init, all_free}.
