@@ -5,7 +5,7 @@ import Prelude hiding ((+))
 import Data.List
 
 main :: IO ()
-main = runGame ticTacToe "game.cep"
+main = runGame othello "game.cep"
 
 run :: M () -> IO ()
 run g = runGame g "game.cep"
@@ -205,7 +205,9 @@ othello = do
     coordtype <- newType "coordtype"
     coord <- newConstructor "coord" [nat,nat] coordtype
 
-    tile <- newPredWithTypeAndNames "tile" [player, coordtype] ["Color", "Col/Row"]
+    coord_eq <- initCoordEQ coordtype coord
+
+    tile <- newPredWithTypeAndNames "tile" [player, coordtype] ["Color", "_/_"]
     lastPlaced <- newPredWithType "lastPlaced" [player, coordtype]
 
     --eq <- initEQ
@@ -217,7 +219,7 @@ othello = do
 
     x <- newBinding nat
     y <- newBinding nat
-    --output <- newBinding coord
+    output <- newBinding coordtype
     p <- newBinding player
     p2 <- newBinding player
 
@@ -226,7 +228,7 @@ othello = do
                 ,                  tile `applyPred` [noone, startPos]
                 , makePersistent $ tile `applyPred` [p2, middlePos]
                 , makePersistent $ tile `applyPred` [p, endPos]
-                --, eq `applyPred` [startPos, coord]
+                , coord_eq `applyPred` [startPos, output]
                 ] -*
                 [            tile       `applyPred` [p, startPos]
                 ,            lastPlaced `applyPred` [p, startPos]

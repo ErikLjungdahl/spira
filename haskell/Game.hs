@@ -252,35 +252,40 @@ initEQ = do
     newFact eq [z, z]
     emitFactImpl $ (applyPred eq [n, m]) --> (applyPred eq [np1,mp1])
     return eq
-{-
-initCoordEQ :: M Pred
-initCoordEQ = do
+
+-- initCoordEQ :: M Pred
+initCoordEQ coordtype coord = do
     eq <-initEQ
-    coord_eq <- newFactType "coord_eq" [coord, coord]
+    (nat, suc, zero) <- gets nats
 
     -- TODO gets coords
-    coordtype <- newType "coordtype"
-    coord <- newConstructor "coord" [nat,nat] coordtype
+    -- coordtype <- newType "coordtype"
+    -- coord <- newConstructor "coord" [nat,nat] coordtype
+
+    coord_eq <- newFactType "coord_eq" [coordtype, coordtype]
+    coord_eq `outputNames` ["Col/Row","Col/Row"]
+
 
     x1 <- newBinding nat
     y1 <- newBinding nat
     x2 <- newBinding nat
     y2 <- newBinding nat
-    x1p1
-    y1p1
-    x1p1
-    y1p1
+    x1p1 <- x1 <+ 1
+    y1p1 <- y1 <+ 1
+    x2p1 <- x2 <+ 1
+    y2p1 <- y2 <+ 1
 
 
-    newFact coord_eq [coord [x1 y1], coord
+    --newFact coord_eq [coord [x1 y1], coord]
+    newFact coord_eq [coord [x1, y1], coord [x1, y1]]
 
-    emitFactImpl $ (applyPred coord_eq [coord x1 y1, coord x2 y2])
-               --> (applyPred eq [x1,x2])
-               --> (applyPred eq [y1,y2])
-               --> (applyPred coord_eq [y1,y2])
+    --emitFactImpl $ (applyPred coord_eq [coord [x1, y1], coord [x2, y2]])
+    --           --> (applyPred eq [x1,x2])
+    --           --> (applyPred eq [y1,y2])
+    --           --> (applyPred coord_eq [coord [x1p1, y1p1], coord [x2p1, y2p1]])
 
-    return eq
--}
+    return coord_eq
+
 
 -- Creates a stage, returns a StageIdentifier which can be used to create
 --      transition between stages with e.g. `fromStageToStage`
