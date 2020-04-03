@@ -582,10 +582,10 @@ checkVars n ts vars = let
             then error "Wrong type when applying"
             else return n
         AVar (Constructor nc ts tc) vars -> do
-            when (t /= tc) $ error $ "Wrong type when applying Pred " ++ n ++ " to Constructor " ++ nc ++ " with Vars " ++ show vars 
+            when (t /= tc) $ error $ "Wrong type when applying Pred " ++ n ++ " to Constructor " ++ nc ++ " with Vars " ++ show vars
             checkedvars <- zipWithM checkVar ts vars
             if checkedvars == []
-            then return n
+            then return nc
             else let checkedvars' = intercalate " " checkedvars
                  in return $ "(" ++ nc ++ " " ++ checkedvars' ++ ")"
     in do

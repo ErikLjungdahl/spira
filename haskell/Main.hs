@@ -5,7 +5,7 @@ import Prelude hiding ((+))
 import Data.List
 
 main :: IO ()
-main = runGame othello "game.cep"
+main = runGame ticTacToe "game.cep"
 
 ticTacToe :: M ()
 ticTacToe = do
