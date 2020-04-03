@@ -14,25 +14,24 @@ def main():
 	dic = create_dict_move(fp_game)
 	cmd = [fp_ceptre, fp_game]
 	p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-	
 	for line in iter(p.stdout.readline, ""):
 		# For removing the starting rows
 		if line == "#trace ...\n":
+			create_initial_board(dic)
 			is_start = False
 		# Removes the ?- line
 		elif re.match(r'\?-',line) and is_time_to_choose:
 			print(line.rstrip()+"\n")
-			is_time_to_choose = False
-			line_pointer = create_board(line_pointer, dic)
+			line_pointer = create_board(line_pointer, dic, "stage play")
 		# Checks for the winner and print the name + won
 		elif re.match(r'{qui',line):
 			#print(re.search(r"(x?<=\bwin\s)(\w+)", line).group() + " won\n")
+			line_pointer = create_board(line_pointer, dic, "stage win")
 			print(line)
 			is_finished = True
 		# changes the (s (s (s z))) + gives name to parameters
 		elif re.match(r'\d*: ',line):
 			print(modify(line, dic).rstrip())
-			is_time_to_choose = True
 		# Prints the line as it is but remove start and end
 		elif keep(line) and not is_start and not is_finished:
 			print(line.rstrip())
@@ -40,22 +39,27 @@ def main():
 	p.stdout.close()
 	p.wait()
 
-
-
-def create_board(line_pointer, dic):
+# pretoken_play
+def create_initial_board(dic):
+	file = open("log.txt")
+	line = file.readlines()[1]
+	print("")
+	dic = line_to_coord(line,dic)
+	print_board(dic)
 	print("")
 
+def create_board(line_pointer, dic, match):
 	line = open("log.txt").readlines()
-
+	print("")
 	for i,l in enumerate (line[line_pointer::]):
-		if(re.match('---- {\(stage play\)',l)) : 
+		if(re.match('---- {\('+match,l)) : 
 			dic = line_to_coord(l,dic)
 			print_board(dic)
 			line_pointer += i+1
 
 	print("")
-
 	return line_pointer
+
 
 
 def print_board(dic_of_positions):
@@ -92,10 +96,9 @@ def print_matrix(mat):
 		print (r)
 
 	last_row = " "
-	size = len(rez)
-	for i in range(len(rez)):
+	size = len(rez[0])
+	for i in range(size):
 		last_row = last_row + " " + str(i)
-	#print("   " + "--"*(size))
 	print(last_row)
 
 

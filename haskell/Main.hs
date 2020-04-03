@@ -15,7 +15,7 @@ ticTacToe = do
     --nats
     --players ["jennie","simon","erik","peter","nicke","oskar"]
     (nat,s,z) <- gets nats
-    (player, playernames, stage_next_player, opp) <- players ["simon","jennie","erik"]
+    (player, playernames, stage_next_player, opp) <- players ["oskar","xena"]
 
     free <- newPredWithTypeAndNames "free" [nat,nat] ["col","row"]
     occupied <- newPredWithType "occupied" [player,nat,nat]
@@ -54,7 +54,7 @@ connectFour = do
     --nats
     --players ["jennie","simon","erik","peter","nicke","oskar"]
     (nat,suc,zero) <- gets nats
-    (player, playernames, stage_next_player, opp) <- players ["hugo","musen"]
+    (player, playernames, stage_next_player, opp) <- players ["xor","oskar"]
 
     free <- newPredWithTypeAndNames "free" [nat,nat] ["col","row"]
     occupied <- newPredWithType "occupied" [player,nat,nat]
