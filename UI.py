@@ -14,11 +14,6 @@ def main():
 	dic = create_dict_move(fp_game)
 	cmd = [fp_ceptre, fp_game]
 	p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-
-	# Prints initial game plan
-	line = open("log.txt").readlines()[1]
-	dicti = line_to_coord(line)
-	print_board(dicti)
 	
 	for line in iter(p.stdout.readline, ""):
 		# For removing the starting rows
@@ -28,7 +23,7 @@ def main():
 		elif re.match(r'\?-',line) and is_time_to_choose:
 			print(line.rstrip()+"\n")
 			is_time_to_choose = False
-			line_pointer = create_board(line_pointer)
+			line_pointer = create_board(line_pointer, dic)
 		# Checks for the winner and print the name + won
 		elif re.match(r'{qui',line):
 			#print(re.search(r"(x?<=\bwin\s)(\w+)", line).group() + " won\n")
@@ -47,14 +42,14 @@ def main():
 
 
 
-def create_board(line_pointer):
+def create_board(line_pointer, dic):
 	print("")
 
 	line = open("log.txt").readlines()
 
 	for i,l in enumerate (line[line_pointer::]):
 		if(re.match('---- {\(stage play\)',l)) : 
-			dic = line_to_coord(l)
+			dic = line_to_coord(l,dic)
 			print_board(dic)
 			line_pointer += i+1
 
@@ -95,7 +90,7 @@ def print_matrix(mat):
 
 
 
-def line_to_coord(line):
+def line_to_coord(line, dic):
 	list_lines = line.split(",")
 	positions = {}
 
@@ -103,7 +98,9 @@ def line_to_coord(line):
 		line = clean_numbers(l).replace("}","").replace("{","")
 		line = line.split(" ")[1:] #Removes the blank spot at start
 		key = line[0]
+		#print(line)
 		if(key == "occupied" or key == "tile"):
+			get_xy(line, dic)
 			player = line[1]
 			xPos = int(line[-2])
 			yPos = int(line[-1])
@@ -112,6 +109,7 @@ def line_to_coord(line):
 			else:
 				positions[player] = [(xPos,yPos)]
 		elif(key == "free"):
+			get_xy(line, dic)
 			xPos = int(line[-2])
 			yPos = int(line[-1])
 			if key in positions:
@@ -119,6 +117,13 @@ def line_to_coord(line):
 			else:
 				positions[key] = [(xPos,yPos)]
 	return positions
+
+
+def get_xy(line, dic):
+	x, y = 0, 0
+
+	return x,y
+
 
 
 def clean_numbers(line):
@@ -164,6 +169,5 @@ def create_dict_move(filepath):
 
 main()
 
-#line = "---- {(stage play), (turn bob), (occupied alice (s z) z), (occupied bob (s z) (s z)), (occupied alice z (s z)), (occupied bob z (s (s z))), (occupied alice z z), (free (s (s z)) (s (s z))), (free (s (s z)) (s z)), (free (s (s z)) z), (free (s z) (s (s z)))}"
-#dic = line_to_coord(line)
-#print_board(dic)
+
+
