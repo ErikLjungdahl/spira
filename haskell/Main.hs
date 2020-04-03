@@ -7,6 +7,9 @@ import Data.List
 main :: IO ()
 main = runGame ticTacToe "game.cep"
 
+run :: M () -> IO ()
+run g = runGame g "game.cep"
+
 ticTacToe :: M ()
 ticTacToe = do
     --nats
@@ -205,7 +208,7 @@ othello = do
     tile <- newPredWithTypeAndNames "tile" [player, coordtype] ["Color", "Col/Row"]
     lastPlaced <- newPredWithType "lastPlaced" [player, coordtype]
 
-
+    --eq <- initEQ
 
     -- Create Board
 
@@ -214,6 +217,7 @@ othello = do
 
     x <- newBinding nat
     y <- newBinding nat
+    --output <- newBinding coord
     p <- newBinding player
     p2 <- newBinding player
 
@@ -222,6 +226,7 @@ othello = do
                 ,                  tile `applyPred` [noone, startPos]
                 , makePersistent $ tile `applyPred` [p2, middlePos]
                 , makePersistent $ tile `applyPred` [p, endPos]
+                --, eq `applyPred` [startPos, coord]
                 ] -*
                 [            tile       `applyPred` [p, startPos]
                 ,            lastPlaced `applyPred` [p, startPos]

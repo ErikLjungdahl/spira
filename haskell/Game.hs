@@ -8,6 +8,7 @@ import Prelude hiding (pred, init, lookup)
 
 import Data
 import Data.List (intercalate)
+import Data.List.Split (splitOn)
 import Control.Monad.Writer
 import Control.Monad.State
 import Data.Map.Lazy (insert, lookup, Map, empty)
@@ -237,6 +238,49 @@ initLTE = do
     newFact lte [z, n]
     emitFactImpl $ (applyPred lte [n, m]) --> (applyPred lte [np1,mp1])
     return lte
+
+initEQ :: M Pred
+initEQ = do
+    (nat,s,z) <- gets nats
+    eq <- newFactType "eq" [nat, nat]
+
+    n <- newBinding nat
+    m <- newBinding nat
+    np1 <- n<+1
+    mp1 <- m<+1
+
+    newFact eq [z, z]
+    emitFactImpl $ (applyPred eq [n, m]) --> (applyPred eq [np1,mp1])
+    return eq
+{-
+initCoordEQ :: M Pred
+initCoordEQ = do
+    eq <-initEQ
+    coord_eq <- newFactType "coord_eq" [coord, coord]
+
+    -- TODO gets coords
+    coordtype <- newType "coordtype"
+    coord <- newConstructor "coord" [nat,nat] coordtype
+
+    x1 <- newBinding nat
+    y1 <- newBinding nat
+    x2 <- newBinding nat
+    y2 <- newBinding nat
+    x1p1
+    y1p1
+    x1p1
+    y1p1
+
+
+    newFact coord_eq [coord [x1 y1], coord
+
+    emitFactImpl $ (applyPred coord_eq [coord x1 y1, coord x2 y2])
+               --> (applyPred eq [x1,x2])
+               --> (applyPred eq [y1,y2])
+               --> (applyPred coord_eq [y1,y2])
+
+    return eq
+-}
 
 -- Creates a stage, returns a StageIdentifier which can be used to create
 --      transition between stages with e.g. `fromStageToStage`
@@ -569,7 +613,7 @@ createGames colnames= mapM_ createGame
                 bindingAndColname (v,cname) = case v of
                         Binding n _ -> Just (n,cname)
                         AVar _ [] -> Nothing
-                        AVar _ (v':vs) -> bindingAndColname (v',cname) -- TODO use vs, split cname on /
+                        AVar _ (v':vs) -> bindingAndColname (v',intercalate " " $ splitOn "/" cname) -- TODO use vs, split cname on /
 
 -- Create the ceptre string from a Pred
 --TODO Test
