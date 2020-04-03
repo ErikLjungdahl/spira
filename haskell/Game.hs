@@ -128,9 +128,13 @@ newPredWithType s xt = do
 newPredWithTypeAndNames :: Name -> [Type] -> [Name] -> M Pred
 newPredWithTypeAndNames s xt names = do
     p <- newPredWithType s xt
-    modify $ \st -> st {columnNames = insert p names $ columnNames st}
+    outputNames p names
     return p
 
+outputNames :: Pred -> [Name] -> M ()
+outputNames p names = do
+    modify $ \st -> st {columnNames = insert p names $ columnNames st}
+    return ()
 --TODO check that Constructor doesn't already exist
 -- Creates a Constructor which can be used in `applyVar` to create an instance of it.
 newConstructor :: Name -> [Type] -> Type -> M Const
@@ -565,7 +569,7 @@ createGames colnames= mapM_ createGame
                 bindingAndColname (v,cname) = case v of
                         Binding n _ -> Just (n,cname)
                         AVar _ [] -> Nothing
-                        AVar _ (v':vs) -> bindingAndColname (v',cname)
+                        AVar _ (v':vs) -> bindingAndColname (v',cname) -- TODO use vs, split cname on /
 
 -- Create the ceptre string from a Pred
 --TODO Test
@@ -577,13 +581,13 @@ checkVars n ts vars = let
             if (t /= tp)
             then error "Wrong type when applying"
             else return n
-        AVar (Constructor n ts tc) vars -> do
-            when (t /= tc) $ error "Wrong type when applying"
+        AVar (Constructor nc ts tc) vars -> do
+            when (t /= tc) $ error $ "Wrong type when applying Pred " ++ n ++ " to Constructor " ++ nc ++ " with Vars " ++ show vars 
             checkedvars <- zipWithM checkVar ts vars
             if checkedvars == []
             then return n
             else let checkedvars' = intercalate " " checkedvars
-                 in return $ "(" ++ n ++ " " ++ checkedvars' ++ ")"
+                 in return $ "(" ++ nc ++ " " ++ checkedvars' ++ ")"
     in do
     when (length ts /= length vars) $ error $ "Wrong number of vars applied to a pred." ++ " Pred: " ++ n ++ ", Vars:" ++ show vars
     apreds <- zipWithM checkVar ts vars

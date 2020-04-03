@@ -202,8 +202,8 @@ othello = do
     coordtype <- newType "coordtype"
     coord <- newConstructor "coord" [nat,nat] coordtype
 
-    tile <- newPredWithTypeAndNames "tile" [coordtype, player] ["Col/Row", "Color"]
-    lastPlaced <- newPredWithType "lastPlaced" [coordtype, player]
+    tile <- newPredWithTypeAndNames "tile" [player, coordtype] ["Color", "Col/Row"]
+    lastPlaced <- newPredWithType "lastPlaced" [player, coordtype]
 
 
 
@@ -219,12 +219,12 @@ othello = do
 
     let place [startPos, middlePos, endPos] =
                 [                  opp  `applyPred` [p, p2]
-                ,                  tile `applyPred` [startPos, noone]
-                , makePersistent $ tile `applyPred` [middlePos, p2]
-                , makePersistent $ tile `applyPred` [endPos, p]
+                ,                  tile `applyPred` [noone, startPos]
+                , makePersistent $ tile `applyPred` [p2, middlePos]
+                , makePersistent $ tile `applyPred` [p, endPos]
                 ] -*
-                [            tile       `applyPred` [startPos, p]
-                ,            lastPlaced `applyPred` [startPos, p]
+                [            tile       `applyPred` [p, startPos]
+                ,            lastPlaced `applyPred` [p, startPos]
                 ]
     let coordinates = half ++ map reverse half
             where half =
@@ -248,17 +248,17 @@ othello = do
 
     let flip' [startPos, middlePos, endPos] =
                 [                  opp        `applyPred` [p, p2]
-                , makePersistent $ lastPlaced `applyPred` [startPos, p ]
-                ,                  tile       `applyPred` [middlePos,p2]
-                , makePersistent $ tile       `applyPred` [endPos,   p ]
+                , makePersistent $ lastPlaced `applyPred` [p , startPos ]
+                ,                  tile       `applyPred` [p2, middlePos]
+                , makePersistent $ tile       `applyPred` [p , endPos ]
                 ] -*
-                [                  tile       `applyPred` [middlePos, p]
+                [                  tile       `applyPred` [p, middlePos]
                 ]
     let impls_flip = map flip' allPossiblePositions
     stage_flip <- stage "flip" False impls_flip p
 
 
-    stage_remove <- stage "remove_last_player" False [ [lastPlaced `applyPred` [coord [x,y], p]] -* [] ] p
+    stage_remove <- stage "remove_last_player" False [ [lastPlaced `applyPred` [p, coord [x,y]]] -* [] ] p
 
 
     stage_play `fromStageToStage` stage_flip
@@ -275,13 +275,13 @@ othello = do
         return $ coord [x',y']
         ) [(x,y) | x <-[0..7], y <- [0..7]]
     addAppliedPredsToInit $
-        map (\coordinate -> applyPred tile [coordinate, noone]) xys
+        map (\coordinate -> applyPred tile [noone, coordinate]) xys
     three <- zero <+ 3
     four <- zero <+ 4
-    addAppliedPredsToInit [(applyPred tile [ coord [three,four ], black ])
-                          ,(applyPred tile [ coord [four ,three], black ])
-                          ,(applyPred tile [ coord [three,three], white ])
-                          ,(applyPred tile [ coord [four ,four ], white ])
+    addAppliedPredsToInit [(applyPred tile [ black, coord [three,four ] ])
+                          ,(applyPred tile [ black, coord [four ,three] ])
+                          ,(applyPred tile [ white, coord [three,three] ])
+                          ,(applyPred tile [ white, coord [four ,four ] ])
                           ]
 
     initialStageAndPlayer stage_play black
