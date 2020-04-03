@@ -85,7 +85,7 @@ def get_boardsize(dic):
 
 	
 def print_matrix(mat):
-	for row in mat:
+	for row in reversed(mat):
 		r = "| "
 		for elem in row:
 			r = r+elem+" "
