@@ -80,13 +80,23 @@ def get_boardsize(dic):
 
 	
 def print_matrix(mat):
-	for row in reversed(mat):
-		r = "| "
+	rez = [[mat[j][i] for j in range(len(mat))] for i in range(len(mat[0]))]
+	size = len(rez)-1
+	#print("   " + "__"*(size+1))
+	for i,row in enumerate(reversed(rez)):
+		r = str(size)
+		size = size - 1
 		for elem in row:
-			r = r+elem+" "
+			r = r + "|" + elem
 		r += "|"
 		print (r)
-			
+
+	last_row = " "
+	size = len(rez)
+	for i in range(len(rez)):
+		last_row = last_row + " " + str(i)
+	#print("   " + "--"*(size))
+	print(last_row)
 
 
 
@@ -136,12 +146,21 @@ def clean_numbers(line):
 # Also gives the names to each kolumn/parameter/dont know what it is called
 def modify(line, dic):
 	t = clean_numbers(line)
+	#print(dic)
 	list_t = t.split(" ")
+
+	## EXPERIMENTAL (ULTIMATE FULHACK OF DOOM)
+	if "coord" in list_t:
+		ind = list_t.index("coord")
+		list_t[ind] = (list_t[ind+1] + "/" + list_t[ind+2]).strip()
+		list_t = list_t[:ind+1]
+
+	#print("AFTER",list_t)
 	if not re.match(r'0',list_t[0]):
 		dic_list = dic.get(list_t[1])
 		st = list_t[0] + " "
 		for i,elem in enumerate(list_t[2:]):
-			#print(i, dic_list)
+			#print(i, dic_list, list_t)
 			kol_name = dic_list[i]
 			if not kol_name == "_":
 				st = st + kol_name + ": " + elem + "  "

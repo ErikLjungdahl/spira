@@ -17,7 +17,7 @@ ticTacToe = do
     (nat,s,z) <- gets nats
     (player, playernames, stage_next_player, opp) <- players ["simon","jennie","erik"]
 
-    free <- newPredWithType "free" [nat,nat]
+    free <- newPredWithTypeAndNames "free" [nat,nat] ["col","row"]
     occupied <- newPredWithType "occupied" [player,nat,nat]
 
     -- Pick a free tile and make it occupied by the player
@@ -56,7 +56,7 @@ connectFour = do
     (nat,suc,zero) <- gets nats
     (player, playernames, stage_next_player, opp) <- players ["hugo","musen"]
 
-    free <- newPredWithType "free" [nat,nat]
+    free <- newPredWithTypeAndNames "free" [nat,nat] ["col","row"]
     occupied <- newPredWithType "occupied" [player,nat,nat]
 
     lt <- initLT
