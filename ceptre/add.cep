@@ -1,0 +1,28 @@
+% Addition
+
+% Natural numbers
+nat     : type.
+z       : nat.
+s   nat : nat.
+
+pair nat nat : pred.
+result nat : pred.
+
+add nat nat nat : bwd.
+addZ : add X z X.           % x+0 = 0
+addS : add X (s Y) (s Z)    % x+(y+1) = z+1
+    <- add X Y Z.           % if x+y = z
+
+stage go = {
+do/add
+    : pair X Y
+    * add X Y Z
+    -o result Z.
+} #interactive go.
+
+
+% Initial context
+context init =
+{pair (s (s (s z))) (s (s z))}
+
+#trace _ go {init}.
