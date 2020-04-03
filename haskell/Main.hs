@@ -15,10 +15,15 @@ ticTacToe = do
     --nats
     --players ["jennie","simon","erik","peter","nicke","oskar"]
     (nat,s,z) <- gets nats
-    (player, playernames, stage_next_player, opp) <- players ["simon","jennie","erik"]
+    (player, playernames, stage_next_player, opp) <- players ["oskar","xena"]
 
+<<<<<<< HEAD
     free <- newPred "free" [nat,nat]
     occupied <- newPred "occupied" [player,nat,nat]
+=======
+    free <- newPredWithTypeAndNames "free" [nat,nat] ["col","row"]
+    occupied <- newPredWithType "occupied" [player,nat,nat]
+>>>>>>> 8dfbf31f91b97a6510269a81db6db03c0b44a2c9
 
     -- Pick a free tile and make it occupied by the player
     x <- newBinding nat
@@ -54,10 +59,15 @@ connectFour = do
     --nats
     --players ["jennie","simon","erik","peter","nicke","oskar"]
     (nat,suc,zero) <- gets nats
-    (player, playernames, stage_next_player, opp) <- players ["hugo","musen"]
+    (player, playernames, stage_next_player, opp) <- players ["xor","oskar"]
 
+<<<<<<< HEAD
     free <- newPred "free" [nat,nat]
     occupied <- newPred "occupied" [player,nat,nat]
+=======
+    free <- newPredWithTypeAndNames "free" [nat,nat] ["col","row"]
+    occupied <- newPredWithType "occupied" [player,nat,nat]
+>>>>>>> 8dfbf31f91b97a6510269a81db6db03c0b44a2c9
 
     lt <- initLT
     maxFact  <- newFactType "max" [nat]

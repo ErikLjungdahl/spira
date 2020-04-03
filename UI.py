@@ -14,25 +14,24 @@ def main():
 	dic = create_dict_move(fp_game)
 	cmd = [fp_ceptre, fp_game]
 	p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-	
 	for line in iter(p.stdout.readline, ""):
 		# For removing the starting rows
 		if line == "#trace ...\n":
+			create_initial_board(dic)
 			is_start = False
 		# Removes the ?- line
 		elif re.match(r'\?-',line) and is_time_to_choose:
 			print(line.rstrip()+"\n")
-			is_time_to_choose = False
-			line_pointer = create_board(line_pointer, dic)
+			line_pointer = create_board(line_pointer, dic, "stage play")
 		# Checks for the winner and print the name + won
 		elif re.match(r'{qui',line):
 			#print(re.search(r"(x?<=\bwin\s)(\w+)", line).group() + " won\n")
+			line_pointer = create_board(line_pointer, dic, "stage win")
 			print(line)
 			is_finished = True
 		# changes the (s (s (s z))) + gives name to parameters
 		elif re.match(r'\d*: ',line):
 			print(modify(line, dic).rstrip())
-			is_time_to_choose = True
 		# Prints the line as it is but remove start and end
 		elif keep(line) and not is_start and not is_finished:
 			print(line.rstrip())
@@ -40,22 +39,27 @@ def main():
 	p.stdout.close()
 	p.wait()
 
-
-
-def create_board(line_pointer, dic):
+# pretoken_play
+def create_initial_board(dic):
+	file = open("log.txt")
+	line = file.readlines()[1]
+	print("")
+	dic = line_to_coord(line,dic)
+	print_board(dic)
 	print("")
 
+def create_board(line_pointer, dic, match):
 	line = open("log.txt").readlines()
-
+	print("")
 	for i,l in enumerate (line[line_pointer::]):
-		if(re.match('---- {\(stage play\)',l)) : 
+		if(re.match('---- {\('+match,l)) : 
 			dic = line_to_coord(l,dic)
 			print_board(dic)
 			line_pointer += i+1
 
 	print("")
-
 	return line_pointer
+
 
 
 def print_board(dic_of_positions):
@@ -80,13 +84,22 @@ def get_boardsize(dic):
 
 	
 def print_matrix(mat):
-	for row in reversed(mat):
-		r = "| "
+	rez = [[mat[j][i] for j in range(len(mat))] for i in range(len(mat[0]))]
+	size = len(rez)-1
+	#print("   " + "__"*(size+1))
+	for i,row in enumerate(reversed(rez)):
+		r = str(size)
+		size = size - 1
 		for elem in row:
-			r = r+elem+" "
+			r = r + "|" + elem
 		r += "|"
 		print (r)
-			
+
+	last_row = " "
+	size = len(rez[0])
+	for i in range(size):
+		last_row = last_row + " " + str(i)
+	print(last_row)
 
 
 
@@ -136,12 +149,21 @@ def clean_numbers(line):
 # Also gives the names to each kolumn/parameter/dont know what it is called
 def modify(line, dic):
 	t = clean_numbers(line)
+	#print(dic)
 	list_t = t.split(" ")
+
+	## EXPERIMENTAL (ULTIMATE FULHACK OF DOOM)
+	if "coord" in list_t:
+		ind = list_t.index("coord")
+		list_t[ind] = (list_t[ind+1] + "/" + list_t[ind+2]).strip()
+		list_t = list_t[:ind+1]
+
+	#print("AFTER",list_t)
 	if not re.match(r'0',list_t[0]):
 		dic_list = dic.get(list_t[1])
 		st = list_t[0] + " "
 		for i,elem in enumerate(list_t[2:]):
-			#print(i, dic_list)
+			#print(i, dic_list, list_t)
 			kol_name = dic_list[i]
 			if not kol_name == "_":
 				st = st + kol_name + ": " + elem + "  "
