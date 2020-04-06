@@ -17,25 +17,25 @@ ticTacToe = do
     (nat,s,z) <- gets nats
     (player, playernames, stage_next_player, opp) <- players ["oskar","xena"]
 
-<<<<<<< HEAD
-    free <- newPred "free" [nat,nat]
-    occupied <- newPred "occupied" [player,nat,nat]
-=======
-    free <- newPredWithTypeAndNames "free" [nat,nat] ["col","row"]
-    occupied <- newPredWithType "occupied" [player,nat,nat]
->>>>>>> 8dfbf31f91b97a6510269a81db6db03c0b44a2c9
+
+    board <- initBoard
+    let (coordType, coord) = coord_t_c board
+    let pieceType = piece_t board
+    let (playerPieceType, pp, free) = player_t_c_free board
+    let tile = tile_p board
 
     -- Pick a free tile and make it occupied by the player
     x <- newBinding nat
     y <- newBinding nat
+    pos <- newBinding coordType
     p <- newBinding player
-    let impl = [applyPred free [x,y]] -* [applyPred occupied [p,x,y]]
+    let impl = [applyPred tile [free, pos]] -* [applyPred tile [pp [p],pos]]
     stage_play<- stage "play" True [impl] p
 
     -- A player wins if they have 3 occupied tiles in a row/colum/diagnal
-    rowrule <- inARow    3 occupied p
-    colrule <- inAColumn 3 occupied p
-    diarules <- inADiagonal 3 occupied p
+    rowrule <- inARow    3 (pp [p])
+    colrule <- inAColumn 3 (pp [p])
+    diarules <- inADiagonal 3 (pp [p])
     stage_win <- stage "win" False (rowrule:colrule:diarules) p
 
     -- After play we check win condition
@@ -50,7 +50,7 @@ ticTacToe = do
 
     -- Set all tiles to free as initial state
     addAppliedPredsToInit $
-        map (applyPred free) [[applyVarTimes s z x ,applyVarTimes s z y] | x <- [0..2], y <- [0..2]]
+        map (\c -> applyPred tile [free, c]) [coord [applyVarTimes s z x ,applyVarTimes s z y] | x <- [0..2], y <- [0..2]]
     return ()
 
 
@@ -61,13 +61,12 @@ connectFour = do
     (nat,suc,zero) <- gets nats
     (player, playernames, stage_next_player, opp) <- players ["xor","oskar"]
 
-<<<<<<< HEAD
-    free <- newPred "free" [nat,nat]
-    occupied <- newPred "occupied" [player,nat,nat]
-=======
-    free <- newPredWithTypeAndNames "free" [nat,nat] ["col","row"]
-    occupied <- newPredWithType "occupied" [player,nat,nat]
->>>>>>> 8dfbf31f91b97a6510269a81db6db03c0b44a2c9
+
+    board <- initBoard
+    let (coordType, coord) = coord_t_c board
+    let pieceType = piece_t board
+    let (playerPieceType, pp, free) = player_t_c_free board
+    let tile = tile_p board
 
     lt <- initLT
     maxFact  <- newFactType "max" [nat]
@@ -80,19 +79,19 @@ connectFour = do
     p <- newBinding player
     m <- newBinding nat
     yP1 <- y<+1
-    let impl = [ applyPred free [x,y]
+    let impl = [ applyPred tile [free, coord [x,y]]
                , applyPred maxFact [m]
                , applyPred lt [y, m]
                ] -*
-               [ applyPred occupied [p,x,y]
-               , applyPred free [x,yP1]  -- Makes the tile above free
+               [ applyPred tile [pp [p], coord [x,y]]
+               , applyPred tile [free, coord [x,yP1]]  -- Makes the tile above free
                ]
     stage_play<- stage "play" True [impl] p
 
     -- A player wins if they have 4 occupied tiles in a row/colum/diagnal
-    rowrule  <- inARow      4 occupied p
-    colrule  <- inAColumn   4 occupied p
-    diarules <- inADiagonal 4 occupied p
+    rowrule  <- inARow      4 (pp [p])
+    colrule  <- inAColumn   4 (pp [p])
+    diarules <- inADiagonal 4 (pp [p])
     stage_win <- stage "win" False (rowrule:colrule:diarules) p
 
     -- After play we check win condition
@@ -109,7 +108,7 @@ connectFour = do
     --
     xs <- mapM (zero<+) [0..6]
     addAppliedPredsToInit $
-        map (\x -> applyPred free [x, zero]) xs
+        map (\x -> applyPred tile [free, coord [x, zero]]) xs
     return ()
 
 chess :: M ()
@@ -192,13 +191,14 @@ othello :: M ()
 othello = do
     (nat,suc,zero) <- gets nats
     (player, playernames, stage_next_player, opp) <- players ["black","white"]
+
     board <- initBoard
     let (coordType, coord) = coord_t_c board
     let pieceType = piece_t board
     let (playerPieceType, pp, free) = player_t_c_free board
     let tile = tile_p board
 
-    coord_eq <- initCoordEQ coordType coord
+    coord_eq <- initCoordEQ
 
     lastPlaced <- newPred "lastPlaced" [playerPieceType, coordType]
 
@@ -211,23 +211,41 @@ othello = do
     p <- newBinding player
     p2 <- newBinding player
 
-    let place [startPos, middlePos, endPos] =
+    let place (startPos:pos) =
+         let middlePositions = init pos
+             endPos = last pos
+             in
                 [                  opp  `applyPred` [p, p2]
                 ,                  tile `applyPred` [free, startPos]
-                , makePersistent $ tile `applyPred` [pp [p2], middlePos]
-                , makePersistent $ tile `applyPred` [pp [p], endPos]
+                ]
+                ++ 
+                map (\middlePos ->
+                   makePersistent (tile `applyPred` [pp [p2], middlePos])
+                    ) middlePositions
+                ++
+                [ makePersistent $ tile `applyPred` [pp [p], endPos]
                 , coord_eq `applyPred` [startPos, output] -- For output
                 ] -*
                 [            tile       `applyPred` [pp [p], startPos]
                 ,            lastPlaced `applyPred` [pp [p], startPos]
                 ]
     let coordinates = half ++ map reverse half
-            where half =
-                    [[(0,0),(1,0),(2,0)]
-                    ,[(0,0),(1,1),(2,2)]
-                    ,[(0,0),(0,1),(0,2)]
-                    ,[(2,0),(1,1),(0,2)]
-                    ]
+            where half = concat
+                         [[ take n (zip cols rows)
+                          | (cols,rows) <-
+                                 [ ([0..]    , repeat 0)
+                                 , (repeat 0 , [0..]   )
+                                 , ([0..]    , [0..]   )
+                                -- , ([n-1..0]   , [0..n-1]  )
+                                 ]
+                          ] | n <- [3..8]
+                         ]
+
+--                    [[(0,0),(1,0),(2,0)]
+--                    ,[(0,0),(1,1),(2,2)]
+--                    ,[(0,0),(0,1),(0,2)]
+--                    ,[(2,0),(1,1),(0,2)]
+--                    ]
     allPossiblePositions <-
         mapM (\positions ->
             mapM (\pos -> do
@@ -241,14 +259,34 @@ othello = do
     stage_play <- stage "play" True impls_play p
 
 
-    let flip' [startPos, middlePos, endPos] =
+    let flip' (startPos:pos) =
+         let middlePositions = init pos
+             endPos = last pos
+             in
                 [                  opp        `applyPred` [p, p2]
                 , makePersistent $ lastPlaced `applyPred` [pp [p ], startPos ]
-                ,                  tile       `applyPred` [pp [p2], middlePos]
-                , makePersistent $ tile       `applyPred` [pp [p ], endPos ]
-                ] -*
-                [                  tile       `applyPred` [pp [p], middlePos]
                 ]
+                ++
+                map (\middlePos ->
+                                   tile       `applyPred` [pp [p2], middlePos]
+                    ) middlePositions
+                ++
+                [ makePersistent $ tile       `applyPred` [pp [p ], endPos ]
+                ] -*
+                map (\middlePos ->
+                                   tile       `applyPred` [pp [p], middlePos]
+                ) middlePositions
+
+
+                {-
+    [                  opp        `applyPred` [p, p2]
+    , makePersistent $ lastPlaced `applyPred` [pp [p ], startPos ]
+    ,                  tile       `applyPred` [pp [p2], middlePos]
+    , makePersistent $ tile       `applyPred` [pp [p ], endPos ]
+    ] -*
+    [                  tile       `applyPred` [pp [p], middlePos]
+    ]
+                -}
     let impls_flip = map flip' allPossiblePositions
     stage_flip <- stage "flip" False impls_flip p
 

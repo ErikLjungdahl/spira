@@ -63,15 +63,15 @@ runGame g fp =
             initNats
 
             -- Draw, goes here in case of no available choice
-            stageDraw
+            initDrawStage
 
     in writeFile fp ceptreOutput
 
 -- Generates the stage for draws
 -- A player automatically goes to this stage if it has no
 --      available choice in an interactive stage
-stageDraw :: M ()
-stageDraw = do
+initDrawStage :: M ()
+initDrawStage = do
     player <- gets player
     drawPred <- newPred "draw" [player]
     varPlayer <- newBinding player
@@ -337,10 +337,14 @@ addAppliedPredsToInit ps =
     modify (\st -> st {initialPreds = ps ++ initialPreds st})
 
 
+
+infix 4 -* -- Lower presedence than ++
 -- Linear Implication (called lollipop)
 -- Removes the left hand side and gives the right hand side
 (-*) :: [Pred] -> [Pred] -> Implication
 ps1 -* ps2 = Implication ps1 ps2
+
+--
 
 
 initNats :: M ()
@@ -398,15 +402,13 @@ initEQ = do
 
 
 -- initCoordEQ :: M Pred
-initCoordEQ coordtype coord = do
+initCoordEQ = do
     eq <-initEQ
     (nat, suc, zero) <- gets nats
+    board <- gets board
+    let (coordType, coord) = coord_t_c board
 
-    -- TODO gets coords
-    -- coordtype <- newType "coordtype"
-    -- coord <- newConstructor "coord" [nat,nat] coordtype
-
-    coord_eq <- newFactType "coord_eq" [coordtype, coordtype]
+    coord_eq <- newFactType "coord_eq" [coordType, coordType]
     coord_eq `outputNames` ["Col/Row","Col/Row"]
 
     x1 <- newBinding nat
@@ -415,17 +417,6 @@ initCoordEQ coordtype coord = do
     newFact coord_eq [coord [x1, y1], coord [x1, y1]]
 
     return coord_eq
-    --x2 <- newBinding nat
-    --y2 <- newBinding nat
-    --x1p1 <- x1 <+ 1
-    --y1p1 <- y1 <+ 1
-    --x2p1 <- x2 <+ 1
-    --y2p1 <- y2 <+ 1
-
-        --emitFactImpl $ (applyPred coord_eq [coord [x1, y1], coord [x2, y2]])
-        --           --> (applyPred eq [x1,x2])
-        --           --> (applyPred eq [y1,y2])
-        --           --> (applyPred coord_eq [coord [x1p1, y1p1], coord [x2p1, y2p1]])
 
 initPlayerAndPieceNotEQ opp = do
     player <- gets player
@@ -456,6 +447,7 @@ data Board = Board
     , tile_p :: Pred
     }
 
+-- Initializes the board
 initBoard :: M Board
 initBoard = do
     playertype <- gets player
@@ -474,7 +466,7 @@ initBoard = do
     free <- newEmptyConstructor "free" playerPieceType
 
     tile <- newPred "tile" [playerPieceType, coordType]
-    tile `outputNames` ["player/Piece", "row/col"]
+    tile `outputNames` ["player/Piece", "Col/Row"]
     let b = Board
             { coord_t_c  = (coordType, coord)
             , piece_t = pieceType
@@ -489,47 +481,38 @@ initBoard = do
 
 
 
--- Pred has to have the constructor "Pred _ [player, nat nat]"
-inARow :: Int -> Pred -> Var -> M Implication
-inARow n pred playerVar = do
+inARow :: Int -> Var -> M Implication
+inARow n playerPiece = do
+    inARowColumDiagonalHelper playerPiece [0..n-1] [0..]
+
+inAColumn :: Int -> Var -> M Implication
+inAColumn n playerPiece = do
+    inARowColumDiagonalHelper playerPiece [0..] [0..n-1]
+
+inADiagonal :: Int -> Var -> M [Implication]
+inADiagonal n playerPiece = do
+    occupiedUp <- inARowColumDiagonalHelper playerPiece [0..n-1] [0..n-1]
+    occupiedDown <- inARowColumDiagonalHelper playerPiece [0..n-1] [n-1..0]
+
+    return $ [occupiedUp, occupiedDown]
+
+-- Var should be an applied Constructor of playerPieceType
+inARowColumDiagonalHelper :: Var -> [Int] -> [Int] -> M Implication
+inARowColumDiagonalHelper playerPiece cols rows = do
     player <- gets player
     (nat, s, z) <- gets nats
+
+    board <- gets board
+    let (coordType, coord) = coord_t_c board
+    let tile = tile_p board
 
     x <- newBinding nat
     y <- newBinding nat
 
-    let occupiedAs = map (\i -> applyPred pred [playerVar, applyVarTimes s x i, y]) [0..n-1]
+    let occupied = map (\(c,r) -> applyPred tile [playerPiece, coord [applyVarTimes s x c, applyVarTimes s y r]])
+                       (zip cols rows)
+    return $ Implication occupied []
 
-    return $ Implication occupiedAs []
-
--- Pred has to have the constructor "Pred _ [player, nat nat]"
-inAColumn :: Int -> Pred -> Var -> M Implication
-inAColumn n pred playerVar = do
-    player <- gets player
-    (nat, s, z) <- gets nats
-
-    x <- newBinding nat
-    y <- newBinding nat
-
-    let occupiedAs = map (\i -> applyPred pred [playerVar, x, applyVarTimes s y i]) [0..n-1]
-
-    return $ Implication occupiedAs []
-
--- Pred has to have the constructor "Pred _ [player, nat nat]"
-inADiagonal :: Int -> Pred -> Var -> M [Implication]
-inADiagonal n pred playerVar = do
-    player <- gets player
-    (nat, s, z) <- gets nats
-
-    x <- newBinding nat
-    y <- newBinding nat
-
-    let occupiedUp = map (\i -> applyPred pred [playerVar, applyVarTimes s x i, applyVarTimes s y i]) [0..n-1]
-    let occupiedDown = map (\i -> applyPred pred [playerVar, applyVarTimes s x i, applyVarTimes s y (n-1-i)]) [0..n-1]
-
-    return $ [Implication occupiedUp   []
-             ,Implication occupiedDown []
-             ]
 
 
 
