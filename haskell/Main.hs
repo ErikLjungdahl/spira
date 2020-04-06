@@ -15,7 +15,8 @@ ticTacToe = do
     --nats
     --players ["jennie","simon","erik","peter","nicke","oskar"]
     (nat,s,z) <- gets nats
-    (player, playernames, stage_next_player, opp) <- players ["oskar","xena"]
+    player <- gets player
+    (playernames, stage_next_player, opp) <- players ["oskar","xena"]
 
 
     board <- initBoard
@@ -29,7 +30,7 @@ ticTacToe = do
     y <- newBinding nat
     pos <- newBinding coordType
     p <- newBinding player
-    let impl = [applyPred tile [free, pos]] -* [applyPred tile [pp [p],pos]]
+    let impl = [tile [free, pos]] -* [tile [pp [p],pos]]
     stage_play<- stage "play" True [impl] p
 
     -- A player wins if they have 3 occupied tiles in a row/colum/diagnal
@@ -50,7 +51,7 @@ ticTacToe = do
 
     -- Set all tiles to free as initial state
     addAppliedPredsToInit $
-        map (\c -> applyPred tile [free, c]) [coord [applyVarTimes s z x ,applyVarTimes s z y] | x <- [0..2], y <- [0..2]]
+        map (\c -> tile [free, c]) [coord [applyVarTimes s z x ,applyVarTimes s z y] | x <- [0..2], y <- [0..2]]
     return ()
 
 
@@ -59,7 +60,8 @@ connectFour = do
     --nats
     --players ["jennie","simon","erik","peter","nicke","oskar"]
     (nat,suc,zero) <- gets nats
-    (player, playernames, stage_next_player, opp) <- players ["xor","oskar"]
+    player <- gets player
+    (playernames, stage_next_player, opp) <- players ["xor","oskar"]
 
 
     board <- initBoard
@@ -69,9 +71,9 @@ connectFour = do
     let tile = tile_p board
 
     lt <- initLT
-    maxFact  <- newFactType "max" [nat]
+    maxFact  <- newFactConstructor "max" [nat]
     six <- zero<+6 -- applyVarTimes s zero 6
-    newFact maxFact [six]
+    emitFact $ maxFact [six]
 
     -- Pick a free tile and make it occupied by the player
     x <- newBinding nat
@@ -79,12 +81,12 @@ connectFour = do
     p <- newBinding player
     m <- newBinding nat
     yP1 <- y<+1
-    let impl = [ applyPred tile [free, coord [x,y]]
-               , applyPred maxFact [m]
-               , applyPred lt [y, m]
+    let impl = [ tile [free, coord [x,y]]
+               , maxFact [m]
+               , lt [y, m]
                ] -*
-               [ applyPred tile [pp [p], coord [x,y]]
-               , applyPred tile [free, coord [x,yP1]]  -- Makes the tile above free
+               [ tile [pp [p], coord [x,y]]
+               , tile [free, coord [x,yP1]]  -- Makes the tile above free
                ]
     stage_play<- stage "play" True [impl] p
 
@@ -108,13 +110,14 @@ connectFour = do
     --
     xs <- mapM (zero<+) [0..6]
     addAppliedPredsToInit $
-        map (\x -> applyPred tile [free, coord [x, zero]]) xs
+        map (\x -> tile [free, coord [x, zero]]) xs
     return ()
 
 chess :: M ()
 chess = do
     (nat,suc,zero) <- gets nats
-    (player, playernames, stage_next_player, opp) <- players ["hugo","musen"]
+    player <- gets player
+    (playernames, stage_next_player, opp) <- players ["hugo","musen"]
     board <- initBoard
     let (coordType, coord) = coord_t_c board
     let piece = piece_t board
@@ -135,12 +138,12 @@ chess = do
 
     -- Horses move.
     let horseImpl [posB,posA] =
-                [ pnp_neq `applyPred` [pnp [p,horse], whatever]
-                , tile `applyPred` [pnp [p ,horse], posB]
-                , tile `applyPred` [whatever, posA]
+                [ pnp_neq [pnp [p,horse], whatever]
+                , tile [pnp [p ,horse], posB]
+                , tile [whatever, posA]
                 ] -*
-                [ tile `applyPred` [pnp [p,horse], posA]
-                , tile `applyPred` [free, posB]
+                [ tile [pnp [p,horse], posA]
+                , tile [free, posB]
                 ]
     -- The different moves a horse can do, moduled in positive coordinates
     -- TODO Desribe as one coordinate and as mirrors of that, then turn it into positive coordinates
@@ -180,9 +183,9 @@ chess = do
         return $ coord [x',y']
         ) [(x,y) | x <-[0..7], y <- [0..7]]
     addAppliedPredsToInit $
-        map (\pos -> applyPred tile [free, pos]) xys
+        map (\pos -> tile [free, pos]) xys
     three <- zero<+3
-    addAppliedPredsToInit [(applyPred tile [pnp [player1, horse],coord [three,three]])]
+    addAppliedPredsToInit [(tile [pnp [player1, horse],coord [three,three]])]
     return ()
 
 
@@ -190,7 +193,8 @@ chess = do
 othello :: M ()
 othello = do
     (nat,suc,zero) <- gets nats
-    (player, playernames, stage_next_player, opp) <- players ["black","white"]
+    player <- gets player
+    (playernames, stage_next_player, opp) <- players ["black","white"]
 
     board <- initBoard
     let (coordType, coord) = coord_t_c board
@@ -215,19 +219,19 @@ othello = do
          let middlePositions = init pos
              endPos = last pos
              in
-                [                  opp  `applyPred` [p, p2]
-                ,                  tile `applyPred` [free, startPos]
+                [                  opp  [p, p2]
+                ,                  tile[free, startPos]
                 ]
-                ++ 
+                ++
                 map (\middlePos ->
-                   makePersistent (tile `applyPred` [pp [p2], middlePos])
+                   makePersistent (tile [pp [p2], middlePos])
                     ) middlePositions
                 ++
-                [ makePersistent $ tile `applyPred` [pp [p], endPos]
-                , coord_eq `applyPred` [startPos, output] -- For output
+                [ makePersistent $ tile [pp [p], endPos]
+                , coord_eq [startPos, output] -- For output
                 ] -*
-                [            tile       `applyPred` [pp [p], startPos]
-                ,            lastPlaced `applyPred` [pp [p], startPos]
+                [            tile       [pp [p], startPos]
+                ,            lastPlaced [pp [p], startPos]
                 ]
     let coordinates = half ++ map reverse half
             where half = concat
@@ -263,35 +267,35 @@ othello = do
          let middlePositions = init pos
              endPos = last pos
              in
-                [                  opp        `applyPred` [p, p2]
-                , makePersistent $ lastPlaced `applyPred` [pp [p ], startPos ]
+                [                  opp        [p, p2]
+                , makePersistent $ lastPlaced [pp [p ], startPos ]
                 ]
                 ++
                 map (\middlePos ->
-                                   tile       `applyPred` [pp [p2], middlePos]
+                                   tile       [pp [p2], middlePos]
                     ) middlePositions
                 ++
-                [ makePersistent $ tile       `applyPred` [pp [p ], endPos ]
+                [ makePersistent $ tile       [pp [p ], endPos ]
                 ] -*
                 map (\middlePos ->
-                                   tile       `applyPred` [pp [p], middlePos]
+                                   tile       [pp [p], middlePos]
                 ) middlePositions
 
 
                 {-
-    [                  opp        `applyPred` [p, p2]
-    , makePersistent $ lastPlaced `applyPred` [pp [p ], startPos ]
-    ,                  tile       `applyPred` [pp [p2], middlePos]
-    , makePersistent $ tile       `applyPred` [pp [p ], endPos ]
+    [                  opp        [p, p2]
+    , makePersistent $ lastPlaced [pp [p ], startPos ]
+    ,                  tile       [pp [p2], middlePos]
+    , makePersistent $ tile       [pp [p ], endPos ]
     ] -*
-    [                  tile       `applyPred` [pp [p], middlePos]
+    [                  tile       [pp [p], middlePos]
     ]
                 -}
     let impls_flip = map flip' allPossiblePositions
     stage_flip <- stage "flip" False impls_flip p
 
 
-    stage_remove <- stage "remove_last_player" False [ [lastPlaced `applyPred` [pp [p], coord [x,y]]] -* [] ] p
+    stage_remove <- stage "remove_last_player" False [ [lastPlaced [pp [p], coord [x,y]]] -* [] ] p
 
 
     stage_play `fromStageToStage` stage_flip
@@ -308,13 +312,13 @@ othello = do
         return $ coord [x',y']
         ) [(x,y) | x <-[0..7], y <- [0..7]]
     addAppliedPredsToInit $
-        map (\coordinate -> applyPred tile [free, coordinate]) xys
+        map (\coordinate -> tile [free, coordinate]) xys
     three <- zero <+ 3
     four <- zero <+ 4
-    addAppliedPredsToInit [(applyPred tile [ pp [black], coord [three,four ] ])
-                          ,(applyPred tile [ pp [black], coord [four ,three] ])
-                          ,(applyPred tile [ pp [white], coord [three,three] ])
-                          ,(applyPred tile [ pp [white], coord [four ,four ] ])
+    addAppliedPredsToInit [(tile [ pp [black], coord [three,four ] ])
+                          ,(tile [ pp [black], coord [four ,three] ])
+                          ,(tile [ pp [white], coord [three,three] ])
+                          ,(tile [ pp [white], coord [four ,four ] ])
                           ]
 
     initialStageAndPlayer stage_play black

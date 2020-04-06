@@ -31,7 +31,7 @@ data St = St
     , player :: Type
     , nats :: (Type,Const,Var)
     , turn :: Pred
-    , drawStage :: (Pred,Pred,Pred)
+    , drawStage :: StageIdentifier
     , columnNames :: Map Pred [Name]
     , board :: Board
     }
@@ -39,6 +39,17 @@ data St = St
 type M a = State St a
 
 type Const = [Var] -> Var
+
+type StageIdentifier = (([Var] -> Pred),Pred,([Var] -> Pred))
+
+data Board = Board
+    { coord_t_c  :: (Type, Const)
+    , piece_t :: Type
+    , playerPiece_t_c_free :: (Type, Const, Var)
+    , player_t_c_free :: (Type, Const, Var)
+    , tile_p :: ([Var] -> Pred)
+    }
+
 
 runGame :: M () -> FilePath -> IO ()
 runGame g fp =
@@ -77,52 +88,39 @@ initDrawStage = do
     varPlayer <- newBinding player
     end <- newPred "end" []
 
-    let appliedDraw = applyPred drawPred [varPlayer]
-    drawStage <- stage "draw" False [[appliedDraw] -* [end]] varPlayer
+    let appliedDraw = drawPred [varPlayer]
+    drawStage <- stage "draw" False [[appliedDraw] -* [end []]] varPlayer
     modify (\st -> st {drawStage = drawStage})
 
 -- Creates a Fact Pred
-newFactType :: String -> [Type] -> M Pred
-newFactType s tx = do
+newFactConstructor :: String -> [Type] -> M ([Var] -> Pred)
+newFactConstructor s tx = do
     let p = Bwd s tx
     addPred p
-    return p
--- Creates a Fact Pred
-newFactTypeWithNames :: String -> [Type] -> [Name] -> M Pred
-newFactTypeWithNames s tx names = do
-    p <- newFactType s tx
-    modify $ \st -> st {columnNames = insert p names $ columnNames st}
-    return p
-
--- Creates a fact.
--- Pred should be Bwd
--- [Var] can contain Bindings
-newFact :: Pred -> [Var] -> M ()
-newFact b vars = do
-    let appliedFact = applyPred b vars
-    addPred appliedFact
-
+    return $ \vars -> ApplyPred p vars
 --
 -- Takes two ApplyPreds on Bwd-predicates and creates a bwd-implication
 (-->) :: Pred -> Pred -> Pred
 b1 --> b2 = b1 `BwdImplication` b2
 
 -- Used after (-->) to output the logical implication
-emitFactImpl :: Pred -> M ()
-emitFactImpl p = case p of
+emitFact :: Pred -> M ()
+emitFact p = case p of
     BwdImplication _ _ -> addPred p
-    _ -> error "Not a BwdImplication"
+    ApplyPred (Bwd _ _) _ -> addPred p
+    _ -> error "Not a Fact"
 
 
 --TODO check that Pred doesn't already exist
-newPred :: Name -> [Type] -> M Pred
+newPred :: Name -> [Type] -> M ([Var] -> Pred)
 newPred s xt = do
     let p = Pred s xt
     addPred p
-    return p
+    return $ \vars -> ApplyPred p vars
 
-outputNames :: Pred -> [Name] -> M ()
-outputNames p names = do
+outputNames :: ([Var] -> Pred) -> [Name] -> M ()
+outputNames fp names = do
+    let ApplyPred p _ = fp []
     modify $ \st -> st {columnNames = insert p names $ columnNames st}
     return ()
 --TODO check that Constructor doesn't already exist
@@ -160,21 +158,21 @@ addPred g = do
 -- Makes a predicate Persistent in the left side of linear implication (-*)
 makePersistent ::  Pred ->  Pred
 makePersistent p = Persistent p
-
-players :: [String] -> M (Type, [Var], (Pred,Pred,Pred),Pred)
+players :: [String] -> M ([Var], StageIdentifier , ([Var] -> Pred))
 players names = do
     player <- gets player -- newType "player"
-    opp <- newFactTypeWithNames "opp" [player, player] ["_","Opponent"]
+    opp <- newFactConstructor "opp" [player, player]
+    opp `outputNames` ["_","Opponent"]
     players <- mapM (\n -> newEmptyConstructor n player) (names)
     -- noone <- newEmptyConstructor "free" player
     --initiateOpponents names names opp
 
     -- TODO more general
-    newFact opp [head players, last players]
-    newFact opp [last players, head players]
+    emitFact $ opp [head players, last players]
+    emitFact $ opp [last players, head players]
 
     nps <- nextPlayerStage opp
-    return (player,players, nps, opp)
+    return (players, nps, opp)
     where
         initiatePlayers [] p = return ()
         initiatePlayers (n:ns) p = do
@@ -189,7 +187,7 @@ players names = do
 
 -- Creates a stage, returns a StageIdentifier which can be used to create
 --      transition between stages with e.g. `fromStageToStage`
-stage :: Name -> IsInteractive -> [Implication] -> Var -> M (Pred,Pred,Pred)
+stage :: Name -> IsInteractive -> [Implication] -> Var -> M StageIdentifier
 stage n isInteractive impls playerVar= do
     player <- gets player
     preToken <- if isInteractive
@@ -198,8 +196,8 @@ stage n isInteractive impls playerVar= do
     preToken `outputNames` ["Turn"]
     posToken <- newPred ("postoken_" ++ n)[player]
 
-    let appliedPreToken = applyPred preToken [playerVar]
-        appliedPosToken = applyPred posToken [playerVar]
+    let appliedPreToken =  preToken [playerVar]
+        appliedPosToken =  posToken [playerVar]
         impls' = map (\(Implication l r) -> Implication
                                                 (appliedPreToken : l)
                                                 (appliedPosToken : r) )
@@ -219,18 +217,18 @@ stage n isInteractive impls playerVar= do
 
     return res
 -- Helper function for fromStageToStage
-fromStageWith :: (Pred,Pred,Pred) -> Var -> [Pred]
+fromStageWith :: StageIdentifier -> Var -> [Pred]
 fromStageWith (_,stagePred,posToken) v =
-    [stagePred, applyPred posToken [v]]
+    [stagePred, posToken [v]]
 
 -- Helper function for fromStageToStage
-toStageWith :: (Pred,Pred,Pred) -> Var -> [Pred]
+toStageWith :: StageIdentifier -> Var -> [Pred]
 toStageWith (preToken,stagePred,_) v =
-    [applyPred preToken [v], stagePred]
+    [preToken [v], stagePred]
 
 -- Creates a transition which takes a player from one succesful stage to another stage
 -- A succesful stage being one where the player performed one of the actions in a stage
-fromStageToStage :: (Pred,Pred,Pred) -> (Pred,Pred,Pred) -> M ()
+fromStageToStage :: StageIdentifier -> StageIdentifier -> M ()
 fromStageToStage from to = do
     p <- gets player
     pVar<- newBinding p
@@ -241,7 +239,7 @@ fromStageToStage from to = do
 -- Creates a transition which takes a player from a failed stage to another stage
 -- A Failed stage being one where the player didn't have the requirements for any of the actions.
 -- Usually used from winStage to nextPlayerStage
-fromFailedStageToStage :: (Pred,Pred,Pred) -> (Pred,Pred,Pred) -> M ()
+fromFailedStageToStage :: StageIdentifier -> StageIdentifier -> M ()
 fromFailedStageToStage from to = do
     p <- gets player
     pVar<- newBinding p
@@ -265,7 +263,7 @@ qui :: Pred
 qui = Pred "qui" []
 
 -- Creates the stage which handles giving the next player a token
-nextPlayerStage :: Pred -> M (Pred,Pred,Pred)
+nextPlayerStage :: ([Var] -> Pred) -> M StageIdentifier
 nextPlayerStage opp = do
     let n = "next_player"
 
@@ -277,10 +275,10 @@ nextPlayerStage opp = do
     nextPlayer <- newBinding player
 
     let impls = [Implication
-                    [ applyPred preToken [prevPlayer]
-                    , applyPred opp [prevPlayer,nextPlayer]
+                    [ preToken [prevPlayer]
+                    , opp [prevPlayer,nextPlayer]
                     ]
-                    [ applyPred posToken [nextPlayer]]
+                    [ posToken [nextPlayer]]
                 ]
         s = Stage n impls False
     addGame s
@@ -318,15 +316,12 @@ newBinding t = do
     modify (\st -> st {nbrOfBindings = n + 1})
     return $ Binding l t
 
--- Sets values/patterns to a Pred, and return an AppliedPred
-applyPred :: Pred -> [Var] -> Pred
-applyPred p vars = ApplyPred p vars
 
 -- Sets the initial stage that given player starts in
-initialStageAndPlayer :: (Pred,Pred,Pred) -> Var -> M ()
+initialStageAndPlayer :: StageIdentifier -> Var -> M ()
 initialStageAndPlayer (pretoken,StagePred n ,_) startingPlayer = do
     modify (\st -> st { initStage = Just n})
-    let a = applyPred pretoken [startingPlayer]
+    let a = pretoken [startingPlayer]
     addAppliedPredsToInit [a]
 
 
@@ -356,65 +351,65 @@ initNats = do
 
 -- Initias the LT operator (less-than)
 -- Returns the predicate "lt" which needs to be applied to something to be used.
-initLT :: M Pred
+initLT :: M ([Var] -> Pred)
 initLT = do
     (nat,s,z) <- gets nats
-    lt <- newFactType "lt" [nat, nat]
+    lt <- newFactConstructor "lt" [nat, nat]
 
     n <- newBinding nat
     m <- newBinding nat
     np1 <- n<+1
     mp1 <- m<+1
 
-    newFact lt [z, np1]
-    emitFactImpl $ (applyPred lt [n, m]) --> (applyPred lt [np1,mp1])
+    emitFact $ lt [z, np1]
+    emitFact $ (lt [n, m]) --> (lt [np1,mp1])
     return lt
 -- Initias the LTE operator (less-than-or-equal) (<=)
 -- Returns the predicate "lte" which needs to be applied to something to be used.
 --TODO Make helper function so this isn't a copy pasta of initLT
-initLTE :: M Pred
+initLTE :: M ([Var] -> Pred)
 initLTE = do
     (nat,s,z) <- gets nats
-    lte <- newFactType "lte" [nat, nat]
+    lte <- newFactConstructor "lte" [nat, nat]
 
     n <- newBinding nat
     m <- newBinding nat
     np1 <- n<+1
     mp1 <- m<+1
 
-    newFact lte [z, n]
-    emitFactImpl $ (applyPred lte [n, m]) --> (applyPred lte [np1,mp1])
+    emitFact $ lte [z, n]
+    emitFact $ (lte [n, m]) --> (lte [np1,mp1])
     return lte
 
-initEQ :: M Pred
+initEQ :: M ([Var] -> Pred)
 initEQ = do
     (nat,s,z) <- gets nats
-    eq <- newFactType "eq" [nat, nat]
+    eq <- newFactConstructor "eq" [nat, nat]
 
     n <- newBinding nat
-    newFact eq [n, n]
+    emitFact $ eq [n, n]
     --     m <- newBinding nat
     --    np1 <- n<+1
     --    mp1 <- m<+1
-    -- newFact eq [z,z]
-    --emitFactImpl $ (applyPred eq [n, m]) --> (applyPred eq [np1,mp1])
+    -- emitFact eq [z,z]
+    --emitFact $ (eq [n, m]) --> (eq [np1,mp1])
     return eq
 
 
--- initCoordEQ :: M Pred
+initCoordEQ :: M ([Var] -> Pred)
 initCoordEQ = do
     eq <-initEQ
     (nat, suc, zero) <- gets nats
     board <- gets board
     let (coordType, coord) = coord_t_c board
 
-    coord_eq <- newFactType "coord_eq" [coordType, coordType]
+    coord_eq <- newFactConstructor "coord_eq" [coordType, coordType]
     coord_eq `outputNames` ["Col/Row","Col/Row"]
 
     x1 <- newBinding nat
     y1 <- newBinding nat
 
-    newFact coord_eq [coord [x1, y1], coord [x1, y1]]
+    emitFact $ coord_eq [coord [x1, y1], coord [x1, y1]]
 
     return coord_eq
 
@@ -424,28 +419,22 @@ initPlayerAndPieceNotEQ opp = do
     let piece = piece_t board
     let (playerPieceType, pnp, free) = playerPiece_t_c_free board
 
-    pnp_neq <- newFactType "pnp_neq" [playerPieceType, playerPieceType]
+    pnp_neq <- newFactConstructor "pnp_neq" [playerPieceType, playerPieceType]
 
     pc<- newBinding piece
     pc2<- newBinding piece
     p <- newBinding player
     p2 <- newBinding player
 
-    newFact pnp_neq [free, pnp [p, pc]]
-    newFact pnp_neq [pnp [p, pc], free]
-    emitFactImpl $ (pnp_neq `applyPred` [pnp [p, pc], pnp [p2, pc2]])
-               --> (opp `applyPred` [p,p2])
+    emitFact $ pnp_neq [free, pnp [p, pc]]
+    emitFact $ pnp_neq [pnp [p, pc], free]
+    emitFact $ (pnp_neq [pnp [p, pc], pnp [p2, pc2]])
+               --> (opp [p,p2])
 
     return pnp_neq
 
 
-data Board = Board
-    { coord_t_c  :: (Type, Const)
-    , piece_t :: Type
-    , playerPiece_t_c_free :: (Type, Const, Var)
-    , player_t_c_free :: (Type, Const, Var)
-    , tile_p :: Pred
-    }
+
 
 -- Initializes the board
 initBoard :: M Board
@@ -509,7 +498,7 @@ inARowColumDiagonalHelper playerPiece cols rows = do
     x <- newBinding nat
     y <- newBinding nat
 
-    let occupied = map (\(c,r) -> applyPred tile [playerPiece, coord [applyVarTimes s x c, applyVarTimes s y r]])
+    let occupied = map (\(c,r) -> tile [playerPiece, coord [applyVarTimes s x c, applyVarTimes s y r]])
                        (zip cols rows)
     return $ Implication occupied []
 
