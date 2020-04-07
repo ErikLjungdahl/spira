@@ -90,11 +90,19 @@ def print_board(dic_of_positions):
 	dic_of_positions (dictionary) - Dictionary of players and there piece positions.
 	"""
 	xMax, yMax = get_boardsize(dic_of_positions)
-	mat = [["_" for j in range(yMax+1)] for i in range(xMax+1)]
+	mat = [["\33[0m"+"_" for j in range(yMax+1)] for i in range(xMax+1)]
+	i = 0
 	for key,val in dic_of_positions.items():
 		if key != "free":
 			for x,y in val:
-				mat[x][y] = key[0].upper()
+				if i == 0:
+					mat[x][y] = '\33[31m' + key[0].upper()
+				if i == 1:
+					mat[x][y] = '\33[32m' + key[0].upper()
+				if i == 2:
+					mat[x][y] = '\33[33m' + key[0].upper()
+		i += 1
+
 	print_matrix(mat)
 
 
@@ -130,7 +138,7 @@ def print_matrix(mat):
 		r = str(size)
 		size = size - 1
 		for elem in row:
-			r = r + "|" + elem
+			r = r + "\33[0m|" + elem
 		r += "|"
 		print (r)
 
