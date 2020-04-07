@@ -13,6 +13,7 @@ def main():
 	line_pointer = 0
 	dic = create_dict_move(fp_game)
 	cmd = [fp_ceptre, fp_game]
+	open("log.txt", "w").close()
 	p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 	for line in iter(p.stdout.readline, ""):
 		# For removing the starting rows
@@ -38,6 +39,7 @@ def main():
 
 	p.stdout.close()
 	p.wait()
+
 
 # pretoken_play
 def create_initial_board(dic):
