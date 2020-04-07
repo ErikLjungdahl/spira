@@ -219,8 +219,8 @@ othello = do
          let middlePositions = init pos
              endPos = last pos
              in
-                [                  opp  [p, p2]
-                ,                  tile[free, startPos]
+                [ opp  [p, p2]
+                , tile[free, startPos]
                 ]
                 ++
                 map (\middlePos ->
@@ -230,8 +230,8 @@ othello = do
                 [ makePersistent $ tile [pp [p], endPos]
                 , coord_eq [startPos, output] -- For output
                 ] -*
-                [            tile       [pp [p], startPos]
-                ,            lastPlaced [pp [p], startPos]
+                [ tile       [pp [p], startPos]
+                , lastPlaced [pp [p], startPos]
                 ]
     let coordinates = half ++ map reverse half
             where half = concat
@@ -240,7 +240,7 @@ othello = do
                                  [ ([0..]    , repeat 0)
                                  , (repeat 0 , [0..]   )
                                  , ([0..]    , [0..]   )
-                                -- , ([n-1..0]   , [0..n-1]  )
+                                 , (reverse [0..n-1]   , [0..n-1]  )
                                  ]
                           ] | n <- [3..8]
                          ]
