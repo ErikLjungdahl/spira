@@ -5,7 +5,7 @@ import Prelude hiding ((+))
 import Data.List
 
 main :: IO ()
-main = runGame chess "game.cep"
+main = runGame othello "game.cep"
 
 run :: M () -> IO ()
 run g = runGame g "game.cep"
@@ -125,7 +125,7 @@ chess = do
     let tile = tile_p board
 
     horse <- newEmptyConstructor "horse" piece
---    tile `outputNames` ["Turn", "Piece", "Col", "Row"]
+    tile `outputNames` ["Turn", "Piece", "Col", "Row"]
 
     pnp_neq <- initPlayerAndPieceNotEQ opp
 
@@ -195,6 +195,8 @@ othello = do
     (nat,suc,zero) <- gets nats
     player <- gets player
     (playernames, stage_next_player, opp) <- players ["black","white"]
+    -- opp `outputNames` ["_","Opponent"]
+
 
     board <- initBoard
     let (coordType, coord) = coord_t_c board
