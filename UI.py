@@ -52,6 +52,7 @@ def create_board(line_pointer, dic, match):
 	line = open("log.txt").readlines()
 	print("")
 	for i,l in enumerate (line[line_pointer::]):
+		
 		if(re.match('---- {\('+match,l)) : 
 			dic = line_to_coord(l,dic)
 			print_board(dic)
@@ -63,9 +64,9 @@ def create_board(line_pointer, dic, match):
 
 
 def print_board(dic_of_positions):
-	#print(dic_of_positions)
 	xMax, yMax = get_boardsize(dic_of_positions)
 	mat = [["_" for j in range(yMax+1)] for i in range(xMax+1)]
+	#print(dic_of_positions)
 	for key,val in dic_of_positions.items():
 		if key != "free":
 			for x,y in val:
@@ -111,10 +112,11 @@ def line_to_coord(line, dic):
 		line = clean_numbers(l).replace("}","").replace("{","")
 		line = line.split(" ")[1:] #Removes the blank spot at start
 		key = line[0]
-		#print(line)
 		if(key == "occupied" or key == "tile"):
 			get_xy(line, dic)
 			player = line[1]
+			if not player == "free" :
+				player = line[2]
 			xPos = int(line[-2])
 			yPos = int(line[-1])
 			if player in positions:
@@ -129,6 +131,7 @@ def line_to_coord(line, dic):
 				positions[key].append( (xPos,yPos) )
 			else:
 				positions[key] = [(xPos,yPos)]
+	
 	return positions
 
 
@@ -149,7 +152,6 @@ def clean_numbers(line):
 # Also gives the names to each kolumn/parameter/dont know what it is called
 def modify(line, dic):
 	t = clean_numbers(line)
-	#print(dic)
 	list_t = t.split(" ")
 
 	## EXPERIMENTAL (ULTIMATE FULHACK OF DOOM)
@@ -183,10 +185,8 @@ def create_dict_move(filepath):
 		for row in f:
 			row = row.strip()
 			if(re.match(r'%%', row)):
-				#print("cdm row:",row)
 				list_row = row.split(" ")[1:]
 				dic[list_row[0]] = list_row[1:]
-				#print("cdm dic:",dic)
 	return dic
 
 main()
