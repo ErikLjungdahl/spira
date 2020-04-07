@@ -481,7 +481,7 @@ inAColumn n playerPiece = do
 inADiagonal :: Int -> Var -> M [Implication]
 inADiagonal n playerPiece = do
     occupiedUp <- inARowColumDiagonalHelper playerPiece [0..n-1] [0..n-1]
-    occupiedDown <- inARowColumDiagonalHelper playerPiece [0..n-1] [n-1..0]
+    occupiedDown <- inARowColumDiagonalHelper playerPiece [0..n-1] (reverse [0..n-1])
 
     return $ [occupiedUp, occupiedDown]
 
