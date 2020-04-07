@@ -54,10 +54,8 @@ def create_initial_board(dic):
 	os.system("clear")
 	log_file = open("log.txt")
 	line = log_file.readlines()[1]
-	print("")
 	dic_of_positions = line_to_coord(line,dic)
 	print_board(dic_of_positions)
-	print("")
 
 
 def create_board(line_pointer, dic, match):
@@ -74,17 +72,13 @@ def create_board(line_pointer, dic, match):
 	"""
 	os.system("clear")
 	line = open("log.txt").readlines()
-	print("")
 	for i,l in enumerate (line[line_pointer::]):
-		
 		if(re.match('---- {\('+match,l)) : 
 			dic_of_positions = line_to_coord(l,dic)
 			print_board(dic_of_positions)
 			line_pointer += i+1
 
-	print("")
 	return line_pointer
-
 
 
 def print_board(dic_of_positions):
@@ -107,8 +101,12 @@ def print_board(dic_of_positions):
 def get_boardsize(dic_of_positions):
 	""" Returns the size of the board with an max value of x and y
 	
-	Paramet:
-	dic_of_positions - Dictionary of players and there piece positions.
+	Parameters:
+	dic_of_positions (dictionarys) - Dictionary of players and there piece positions.
+
+	Returns:
+	xMax (int) - Max value on the x-axis
+	yMax (int) - Max value on the y-axis
 	"""
 	xMax, yMax = 0, 0
 	for key,val in dic_of_positions.items():
@@ -117,13 +115,13 @@ def get_boardsize(dic_of_positions):
 			yMax = y if yMax < y else yMax
 	return xMax, yMax
  
-
 	
 def print_matrix(mat):
 	""" Prints the board nicely with indexing columns/rows, this
 	makes is easier to read the board.
 
-	:param mat - Matrix of characters (players pieces) 
+	Parameters:
+	mat (dictionary) - Matrix of characters (players pieces)
 	"""
 	rez = [[mat[j][i] for j in range(len(mat))] for i in range(len(mat[0]))]
 	size = len(rez)-1
@@ -143,14 +141,17 @@ def print_matrix(mat):
 	print(last_row)
 
 
-
 def line_to_coord(line, dic):
 	""" Parse a line from the log.txt into a dictionary of positions,
 	it creates a key for each player and one for the "free".
 	Then it adds all position that each key allready posess.
 	
-	:param line - A single line from log.txt that we will parse
-	:param dic  - Dictionary of players and there piece positions.
+	Parameters:
+	line (String)    - A single line from log.txt that we will parse
+	dic (dictionary) - Dictionary of players and there piece positions.
+
+	Returns:
+	position (dictionary) - Positions of the players pieces.
 	"""
 	list_lines = line.split(",")
 	positions = {}
@@ -179,27 +180,33 @@ def line_to_coord(line, dic):
 def clean_numbers(line):
 	""" Clean up the successors of zero so basicly we parse a line from the 
 	output and reamoves the "s (s (s (z))))" to a simple 4.
+	
+	Parameters:
+	line (String) - one line from the outputted ceptre lines in the terminal.
 
-	:param line - one line from the outputted ceptre lines in the terminal.
+	Returns:
+	new_line (String) - Cleaned string with ints instead of (s z).
 	"""
-	tmp = re.sub(r"\([sz].*?\)", lambda m: str(m.group().count("s")), line)
-	t = tmp.replace(")","").replace("(","").replace(" z"," 0")
-	return t
+	tmp_line = re.sub(r"\([sz].*?\)", lambda m: str(m.group().count("s")), line)
+	new_line = tmp_line.replace(")","").replace("(","").replace(" z"," 0")
+	return new_line
 
 
-# Modifies the (s (s z)) -> int.
-# Also gives the names to each kolumn/parameter/dont know what it is called
 def modify(line, dic):
 	""" Modfies one line of the output.
 	This method take the dictionary that contains the output values for
 	the different stages in ceptre and returns a string that is simplified and
 	contain each label.
 
-	:param line - One single line of the ceptre output.
-	:param dic  - Dictionary of players and there piece positions.
+	Parameters:
+	line (String)    - One single line of the ceptre output.
+	dic (dictionary) - Dictionary of players and there piece positions.
+
+	Returns:
+	st (String) - New string with labels
 	"""
-	t = clean_numbers(line)
-	list_t = t.split(" ")
+	tmp = clean_numbers(line)
+	list_t = tmp.split(" ")
 
 	# creates a display of "Row/Col" instead of two different row: 1  col: 1
 	if "coord" in list_t:
@@ -212,20 +219,23 @@ def modify(line, dic):
 		dic_list = dic.get(list_t[1])
 		st = list_t[0] + " "
 		for i,elem in enumerate(list_t[2:]):
-			#print(i, dic_list, list_t)
 			kol_name = dic_list[i]
 			if not kol_name == "_":
 				st = st + kol_name + ": " + elem + "  "
 		return st
 	return "0: quit"
 
-# creates a dict on all interactive plays that exist
+
 def create_dict_move(filepath):
 	""" Creates the dictionary for the output names. it reads
 	the line starting with %% in the ceptre file to then use 
 	it to give everything names
+	
+	Parameters:
+	filepath (String) - Filepath to the ceptre file.
 
-	:param filepath - Filepath to the ceptre file.
+	Returns:
+	dic (dictionary) - dictionary of players labels.
 	"""
 	dic = {}
 	with open(filepath) as f:
