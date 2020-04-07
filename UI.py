@@ -1,8 +1,9 @@
-import subprocess
+from subprocess import Popen, PIPE
 import re
 import sys
 from sys import stdin
 import os
+
 
 def main(fp_ceptre, fp_game):
 	""" Main function that open a pipe process.
@@ -14,19 +15,18 @@ def main(fp_ceptre, fp_game):
 	"""
 	is_start = True
 	is_finished = False
-	is_time_to_choose = True
 	line_pointer = 0
 	dic = create_dict_move(fp_game)
 	cmd = [fp_ceptre, fp_game]
-	#open("log.txt", "w").close()
-	p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+	p = Popen(cmd, stdout=PIPE)
+
 	for line in iter(p.stdout.readline, ""):
 		# For removing the starting rows
 		if line == "#trace ...\n":
 			create_initial_board(dic)
 			is_start = False
 		# Removes the ?- line
-		elif re.match(r'\?-',line) and is_time_to_choose:
+		elif re.match(r'\?-',line):
 			print(line.rstrip()+"\n")
 			line_pointer = create_board(line_pointer, dic, "stage play")
 		# Checks for the winner and print the name + won
@@ -43,28 +43,36 @@ def main(fp_ceptre, fp_game):
 			print(line.rstrip())
 
 	p.stdout.close()
-	p.wait()
 
 
 def create_initial_board(dic):
 	""" Creates the initial state of the board
-	:param dic - Dictionary of players and there piece positions.
+
+	Parameters:
+	dic (dictionary) - Dictionary of players and there piece positions.
 	"""
-	file = open("log.txt")
-	line = file.readlines()[1]
+	os.system("clear")
+	log_file = open("log.txt")
+	line = log_file.readlines()[1]
 	print("")
 	dic_of_positions = line_to_coord(line,dic)
 	print_board(dic_of_positions)
 	print("")
 
+
 def create_board(line_pointer, dic, match):
 	""" Creates the board for the updated state after user pick 
 	an alternative move to go to.
+	
+	Parameters:
+	line_pointer (int) - Point at the line to start reading from in "log.txt".
+	dic (dictionary)   - Dictionary of players and there piece positions.
+	match (String)     - The line to match regex on in "log.txt".
 
-	:param line_pointer - Point at the line to start reading from in "log.txt".
-	:param dic          - Dictionary of players and there piece positions.
-	:param match        - The line to match regex on in "log.txt".
+	Returns:
+	line_pointer (int) - Pointing at the line after last read one in "log.txt".
 	"""
+	os.system("clear")
 	line = open("log.txt").readlines()
 	print("")
 	for i,l in enumerate (line[line_pointer::]):
@@ -83,9 +91,9 @@ def print_board(dic_of_positions):
 	""" Creates the board in a matrix and pass it to print_matrix to print.
 	Takes the dictionary and loop through each player (key) and 
 	add the players first letter in uppercase as Piece
-
-	:param dic_of_positions - Dictionary of players and there piece positions.
-
+	
+	Parameters:
+	dic_of_positions (dictionary) - Dictionary of players and there piece positions.
 	"""
 	xMax, yMax = get_boardsize(dic_of_positions)
 	mat = [["_" for j in range(yMax+1)] for i in range(xMax+1)]
@@ -99,7 +107,8 @@ def print_board(dic_of_positions):
 def get_boardsize(dic_of_positions):
 	""" Returns the size of the board with an max value of x and y
 	
-	:param dic_of_positions - Dictionary of players and there piece positions.
+	Paramet:
+	dic_of_positions - Dictionary of players and there piece positions.
 	"""
 	xMax, yMax = 0, 0
 	for key,val in dic_of_positions.items():
@@ -118,6 +127,7 @@ def print_matrix(mat):
 	"""
 	rez = [[mat[j][i] for j in range(len(mat))] for i in range(len(mat[0]))]
 	size = len(rez)-1
+	print("")
 	for i,row in enumerate(reversed(rez)):
 		r = str(size)
 		size = size - 1
@@ -144,28 +154,23 @@ def line_to_coord(line, dic):
 	"""
 	list_lines = line.split(",")
 	positions = {}
-
 	for l in list_lines:
 		line = clean_numbers(l).replace("}","").replace("{","")
 		line = line.split(" ")[1:] #Removes the blank spot at start
 		key = line[0]
-		if(key == "occupied" or key == "tile"):
-			player = line[1]
-			if not player == "free" :
+		if len(line) > 2 :
+			if key == "free":
+				player = key
+			elif not line[1] == "free":
 				player = line[2]
-			xPos = int(line[-2])
-			yPos = int(line[-1])
+			else :
+				player = line[1]
+
+			xPos, yPos = int(line[-2]), int(line[-1])
 			if player in positions:
 				positions[player].append( (xPos,yPos) )
 			else:
 				positions[player] = [(xPos,yPos)]
-		elif(key == "free"):
-			xPos = int(line[-2])
-			yPos = int(line[-1])
-			if key in positions:
-				positions[key].append( (xPos,yPos) )
-			else:
-				positions[key] = [(xPos,yPos)]
 	
 	return positions
 
