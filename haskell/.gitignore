@@ -1,6 +1,6 @@
 
 # Generated ceptre files
-game.cep
+*.cep
 trace.dot
 log.txt
 
