@@ -11,7 +11,8 @@ import Data.List (intercalate, intersperse)
 import Data.List.Split (splitOn)
 import Control.Monad.Writer
 import Control.Monad.State
-import Data.Map.Lazy (insert, lookup, Map, empty)
+import qualified Data.Map.Lazy as Map (insert, lookup, empty, toList)
+import Data.Map.Lazy (Map)
 
 import Debug.Trace
 
@@ -34,6 +35,7 @@ data St = St
     , drawStage :: StageIdentifier
     , columnNames :: Map Pred [Name]
     , board :: Board
+    , initialBoard :: Map Var Pred
     }
 
 type M a = State St a
@@ -54,7 +56,7 @@ data Board = Board
 runGame :: M () -> FilePath -> IO ()
 runGame g fp =
     let (_, ceptreOutput) = runWriter (createGameFromSt st)
-        (_, st) = runState (default_config >>=(\_ -> g)) initSt
+        (_, st) = runState (default_config >> g >> boardToInit ) initSt
         initSt = St
             { types  = []
             , preds  = []
@@ -63,7 +65,8 @@ runGame g fp =
             , initStage = Nothing
             , initialPreds = []
             , nbrOfBindings = 0
-            , columnNames = empty
+            , columnNames = Map.empty
+            , initialBoard = Map.empty
             }
         default_config :: M ()
         default_config = do
@@ -75,6 +78,10 @@ runGame g fp =
 
             -- Draw, goes here in case of no available choice
             initDrawStage
+        boardToInit :: M ()
+        boardToInit = do
+            initialBoard <- gets initialBoard
+            foldM (\_ -> addPredToInit) () initialBoard
 
     in writeFile fp ceptreOutput
 
@@ -118,11 +125,11 @@ newPred s xt = do
     addPred p
     return $ \vars -> ApplyPred p vars
 
-outputNames :: ([Var] -> Pred) -> [Name] -> M ()
-outputNames fp names = do
-    let ApplyPred p _ = fp []
-    modify $ \st -> st {columnNames = insert p names $ columnNames st}
-    return ()
+newEmptyPred :: Name -> M Pred
+newEmptyPred s = do
+    p <- newPred s []
+    return $ p []
+
 --TODO check that Constructor doesn't already exist
 -- Creates a Constructor which can be used in `applyVar` to create an instance of it.
 newConstructor :: Name -> [Type] -> Type -> M Const
@@ -206,7 +213,8 @@ stage n isInteractive impls playerVar= do
     let stagePred = StagePred n
     let res = (preToken, stagePred, posToken)
 
-    -- Add draw
+    -- Add draw upon failed stage
+    -- TODO should probably be up to the user. Not all games ends in a draw when someone can't do something
     when isInteractive $ do
         drawStage <- gets drawStage
         transition (n ++ "_to_draw")
@@ -246,9 +254,9 @@ fromFailedStageToStage from to = do
             $ (from `toStageWith` pVar)
               -*
               (to `toStageWith` pVar)
-
-sndOf3 :: (a,b,c) -> b
+fstOf3 (a,_,_) = a
 sndOf3 (_,b,_) = b
+trdOf3 (_,_,c) = c
 
 --TODO Name should probably be auto-generated
 -- Creates a transition between stages.
@@ -327,8 +335,20 @@ initialStageAndPlayer (pretoken,StagePred n ,_) startingPlayer = do
 -- Each Pred in the list needs to be applied,
 -- since they need to actually have a value.
 addAppliedPredsToInit :: [Pred] -> M ()
-addAppliedPredsToInit ps =
-    modify (\st -> st {initialPreds = ps ++ initialPreds st})
+addAppliedPredsToInit = mapM_ addPredToInit
+
+addPredToInit :: Pred -> M ()
+addPredToInit p = modify (\st -> st {initialPreds = p : initialPreds st})
+
+
+
+addToInitialBoard :: Pred -> M ()
+addToInitialBoard p = case p of
+    ApplyPred (Pred "tile" _) (pnp:coord:[]) -> do
+        board <- gets initialBoard
+        let updatedBoard = Map.insert coord p board
+        modify $ \st -> st {initialBoard = updatedBoard}
+    _ -> error "Can't add non-tile Pred to InitialBoard"
 
 
 
@@ -436,12 +456,13 @@ initPlayerAndPieceNotEQ opp = do
 
 
 -- Initializes the board
-initBoard :: M Board
-initBoard = do
+-- Sets all tiles to free. To add a playerPiece to the initialBoard, use @addToInitialBoard
+initBoard :: Int -> Int -> M Board
+initBoard cols rows = do
     playertype <- gets player
     pieceType <- newType "piece"
 
-    ( nat,_,_) <- gets nats
+    ( nat,s,z) <- gets nats
     coordType <- newType "coordType"
     coord <- newConstructor "coord" [nat,nat] coordType
 
@@ -464,10 +485,25 @@ initBoard = do
             }
 
     modify $ \st -> st {board = b}
+
+    mapM (\c ->
+            addToInitialBoard $
+                tile [free, c]
+         )
+         [coord [applyVarTimes s z x ,applyVarTimes s z y]
+            | x <- [0..cols-1], y <- [0..rows-1] ]
+
     return b
 
 
 
+-- Combines inARow, inAColumn, inADiagonal
+inALine :: Int -> Var -> M [Implication]
+inALine n playerPiece = do
+    rowrule <- inARow    n playerPiece
+    colrule <- inAColumn n playerPiece
+    diarules <- inADiagonal n playerPiece
+    return $ rowrule:colrule:diarules
 
 inARow :: Int -> Var -> M Implication
 inARow n playerPiece = do
@@ -502,8 +538,15 @@ inARowColumDiagonalHelper playerPiece cols rows = do
     return $ Implication occupied []
 
 
+numberType = fstOf3 . nats
 
 
+
+outputNames :: ([Var] -> Pred) -> [Name] -> M ()
+outputNames fp names = do
+    let ApplyPred p _ = fp []
+    modify $ \st -> st {columnNames = Map.insert p names $ columnNames st}
+    return ()
 
 ---- BACKEND ----
 -- From our State (St) to ceptre
@@ -630,7 +673,7 @@ createGames colnames= mapM_ createGame
                         context
                         (zip vars cns)
                 in
-                case lookup p colnames of
+                case Map.lookup p colnames of
                     Just cns -> helper cns
                     Nothing -> helper $ repeat $ intersperse '/' (repeat '_')
             _ -> context

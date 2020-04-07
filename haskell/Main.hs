@@ -5,25 +5,23 @@ import Prelude hiding ((+))
 import Data.List
 
 main :: IO ()
-main = runGame othello "game.cep"
+main = runGame ticTacToe "game.cep"
 
 run :: M () -> IO ()
 run g = runGame g "game.cep"
 
 ticTacToe :: M ()
 ticTacToe = do
-    --nats
-    --players ["jennie","simon","erik","peter","nicke","oskar"]
-    (nat,s,z) <- gets nats
-    player <- gets player
-    (playernames, stage_next_player, opp) <- players ["oskar","xena"]
-
-
-    board <- initBoard
+    board <- initBoard 3 3
     let (coordType, coord) = coord_t_c board
     let pieceType = piece_t board
     let (playerPieceType, pp, free) = player_t_c_free board
     let tile = tile_p board
+
+    nat <- gets numberType
+    player <- gets player
+
+    (playernames, stage_next_player, opp) <- players ["oskar","xena"]
 
     -- Pick a free tile and make it occupied by the player
     x <- newBinding nat
@@ -34,10 +32,8 @@ ticTacToe = do
     stage_play<- stage "play" True [impl] p
 
     -- A player wins if they have 3 occupied tiles in a row/colum/diagnal
-    rowrule <- inARow    3 (pp [p])
-    colrule <- inAColumn 3 (pp [p])
-    diarules <- inADiagonal 3 (pp [p])
-    stage_win <- stage "win" False (rowrule:colrule:diarules) p
+    rules <- inALine 3 (pp [p])
+    stage_win <- stage "win" False (rules) p
 
     -- After play we check win condition
     stage_play `fromStageToStage` stage_win
@@ -49,9 +45,6 @@ ticTacToe = do
 
     initialStageAndPlayer stage_play (head playernames)
 
-    -- Set all tiles to free as initial state
-    addAppliedPredsToInit $
-        map (\c -> tile [free, c]) [coord [applyVarTimes s z x ,applyVarTimes s z y] | x <- [0..2], y <- [0..2]]
     return ()
 
 
@@ -64,7 +57,7 @@ connectFour = do
     (playernames, stage_next_player, opp) <- players ["xor","oskar"]
 
 
-    board <- initBoard
+    board <- initBoard 7 1
     let (coordType, coord) = coord_t_c board
     let pieceType = piece_t board
     let (playerPieceType, pp, free) = player_t_c_free board
@@ -91,10 +84,8 @@ connectFour = do
     stage_play<- stage "play" True [impl] p
 
     -- A player wins if they have 4 occupied tiles in a row/colum/diagnal
-    rowrule  <- inARow      4 (pp [p])
-    colrule  <- inAColumn   4 (pp [p])
-    diarules <- inADiagonal 4 (pp [p])
-    stage_win <- stage "win" False (rowrule:colrule:diarules) p
+    rules  <- inALine 4 (pp [p])
+    stage_win <- stage "win" False (rules) p
 
     -- After play we check win condition
     stage_play `fromStageToStage` stage_win
@@ -103,22 +94,14 @@ connectFour = do
     -- And then the next player gets to play
     stage_next_player`fromStageToStage` stage_play
 
-
     initialStageAndPlayer stage_play (head playernames)
-
-    -- Set all tiles to free as initial state
-    --
-    xs <- mapM (zero<+) [0..6]
-    addAppliedPredsToInit $
-        map (\x -> tile [free, coord [x, zero]]) xs
-    return ()
 
 chess :: M ()
 chess = do
     (nat,suc,zero) <- gets nats
     player <- gets player
     (playernames, stage_next_player, opp) <- players ["hugo","musen"]
-    board <- initBoard
+    board <- initBoard 8 8
     let (coordType, coord) = coord_t_c board
     let piece = piece_t board
     let (playerPieceType, pnp, free) = playerPiece_t_c_free board
@@ -175,19 +158,8 @@ chess = do
     let player1 = last playernames
     initialStageAndPlayer stage_play (player1)
 
-    -- Set all tiles to free as initial state
-    --
-    xys <- mapM (\(x,y) -> do
-        x'<- zero<+x
-        y'<- zero<+y
-        return $ coord [x',y']
-        ) [(x,y) | x <-[0..7], y <- [0..7]]
-    addAppliedPredsToInit $
-        map (\pos -> tile [free, pos]) xys
     three <- zero<+3
-    addAppliedPredsToInit [(tile [pnp [player1, horse],coord [three,three]])]
-    return ()
-
+    addToInitialBoard (tile [pnp [player1, horse],coord [three,three]])
 
 
 othello :: M ()
@@ -197,8 +169,7 @@ othello = do
     (playernames, stage_next_player, opp) <- players ["black","white"]
     -- opp `outputNames` ["_","Opponent"]
 
-
-    board <- initBoard
+    board <- initBoard 8 8
     let (coordType, coord) = coord_t_c board
     let pieceType = piece_t board
     let (playerPieceType, pp, free) = player_t_c_free board
@@ -306,24 +277,12 @@ othello = do
     stage_remove `fromStageToStage` stage_next_player
     stage_next_player `fromStageToStage` stage_play
 
-
-
-    xys <- mapM (\(x,y) -> do
-        x'<- zero <+ x
-        y'<- zero <+ y
-        return $ coord [x',y']
-        ) [(x,y) | x <-[0..7], y <- [0..7]]
-    addAppliedPredsToInit $
-        map (\coordinate -> tile [free, coordinate]) xys
     three <- zero <+ 3
     four <- zero <+ 4
-    addAppliedPredsToInit [(tile [ pp [black], coord [three,four ] ])
-                          ,(tile [ pp [black], coord [four ,three] ])
-                          ,(tile [ pp [white], coord [three,three] ])
-                          ,(tile [ pp [white], coord [four ,four ] ])
-                          ]
+    mapM addToInitialBoard [(tile [ pp [black], coord [three,four ] ])
+                           ,(tile [ pp [black], coord [four ,three] ])
+                           ,(tile [ pp [white], coord [three,three] ])
+                           ,(tile [ pp [white], coord [four ,four ] ])
+                           ]
 
     initialStageAndPlayer stage_play black
-
-
-    return ()
