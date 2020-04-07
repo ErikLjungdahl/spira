@@ -7,7 +7,7 @@ module Game where
 import Prelude hiding (pred, init, lookup)
 
 import Data
-import Data.List (intercalate)
+import Data.List (intercalate, intersperse)
 import Data.List.Split (splitOn)
 import Control.Monad.Writer
 import Control.Monad.State
@@ -162,7 +162,6 @@ players :: [String] -> M ([Var], StageIdentifier , ([Var] -> Pred))
 players names = do
     player <- gets player -- newType "player"
     opp <- newFactConstructor "opp" [player, player]
-    opp `outputNames` ["_","Opponent"]
     players <- mapM (\n -> newEmptyConstructor n player) (names)
     -- noone <- newEmptyConstructor "free" player
     --initiateOpponents names names opp
@@ -455,7 +454,7 @@ initBoard = do
     free <- newEmptyConstructor "free" playerPieceType
 
     tile <- newPred "tile" [playerPieceType, coordType]
-    tile `outputNames` ["player/Piece", "Col/Row"]
+    --tile `outputNames` ["player/Piece", "Col/Row"]
     let b = Board
             { coord_t_c  = (coordType, coord)
             , piece_t = pieceType
@@ -619,27 +618,30 @@ createGames colnames= mapM_ createGame
             ApplyPred p vars -> let
                 helper cns =
                     foldl (\ctx vc ->
-                        case bindingAndColname vc of
-                            Just (b,c) ->
-                                if b `elem` map fst ctx
-                                    then ctx
-                                    else  ctx ++ [(b,c)]
-                            Nothing -> ctx
+                        foldl
+                            (\ctx' maybeBac ->
+                                case maybeBac of
+                                    Just (b,c) -> if b `elem` map fst ctx'
+                                        then ctx'
+                                        else  ctx' ++ [(b,c)]
+                                    Nothing -> ctx'
+                            ) ctx (bindingAndColname vc)
                         )
                         context
                         (zip vars cns)
                 in
                 case lookup p colnames of
                     Just cns -> helper cns
-                    Nothing -> helper (repeat "_")
+                    Nothing -> helper $ repeat $ intersperse '/' (repeat '_')
             _ -> context
             where
-                bindingAndColname :: (Var, String) -> Maybe (Name, String)
+                bindingAndColname :: (Var, String) -> [Maybe (Name, String)]
                 bindingAndColname (v,cname) = case v of
-                        Binding n _ -> Just (n,cname)
-                        AVar _ [] -> Nothing
-                        AVar _ (v':vs) -> bindingAndColname (v',intercalate " " $ splitOn "/" cname) -- TODO use vs, split cname on /
-
+                        Binding n _ -> [Just (n, if head cname == '_' then "_" else cname)]
+                        AVar _ [] -> [Nothing]
+                        AVar _ vs -> concat $ map
+                            (bindingAndColname
+                            ) ( zip vs (splitOn "/" cname))
 -- Create the ceptre string from a Pred
 --TODO Test
 checkVars:: Name -> [Type] -> [Var] -> O String
