@@ -5,7 +5,7 @@ import Prelude hiding ((+))
 import Data.List
 
 main :: IO ()
-main = runGame ticTacToe "game.cep"
+main = runGame othello "game.cep"
 
 run :: M () -> IO ()
 run g = runGame g "game.cep"
@@ -17,6 +17,7 @@ ticTacToe = do
     let pieceType = piece_t board
     let (playerPieceType, pp, free) = player_t_c_free board
     let tile = tile_p board
+    tile `outputNames` ["Player","Row/Col"]
 
     nat <- gets numberType
     player <- gets player
@@ -35,8 +36,13 @@ ticTacToe = do
     rules <- inALine 3 (pp [p])
     stage_win <- stage "win" False (rules) p
 
+
+    stage_draw <- initDrawStage
+
     -- After play we check win condition
     stage_play `fromStageToStage` stage_win
+    -- If we can't play, all tiles are filled and it is a Draw
+    stage_play `fromFailedStageToStage` stage_draw
     -- If noone has won, we go to the next player
     stage_win `fromFailedStageToStage`stage_next_player
     -- And then the next player gets to play
@@ -254,28 +260,43 @@ othello = do
                                    tile       [pp [p], middlePos]
                 ) middlePositions
 
-
-                {-
-    [                  opp        [p, p2]
-    , makePersistent $ lastPlaced [pp [p ], startPos ]
-    ,                  tile       [pp [p2], middlePos]
-    , makePersistent $ tile       [pp [p ], endPos ]
-    ] -*
-    [                  tile       [pp [p], middlePos]
-    ]
-                -}
     let impls_flip = map flip' allPossiblePositions
     stage_flip <- stage "flip" False impls_flip p
 
 
     stage_remove <- stage "remove_last_player" False [ [lastPlaced [pp [p], coord [x,y]]] -* [] ] p
 
+    points <- newPred "points" [player, nat]
+
+    whatever <- newBinding coordType
+    whoever <- newBinding player
+    xp1 <- x<+1
+    stage_count <- stage "count_tiles" False [ [ tile [pp [p], whatever]
+                                               , points [p, x]
+                                               ] -*
+                                               [ points [p, xp1] ]
+                                             ]  whoever -- p and p2 don't have to match
+
+    lt <- initLT
+    win <- newPred "win" [player]
+    stage_winner <- stage "winner" False [ [ points [p, x]
+                                            , points [p2, y]
+                                            , lt [x, y]
+                                            ] -*
+                                            [ win [p2]]
+                                          ] whoever
+    stage_draw <- initDrawStage
 
     stage_play `fromStageToStage` stage_flip
-    stage_flip `fromStageToStage` stage_flip
-    stage_flip `fromFailedStageToStage` stage_remove
+    stage_flip `fromStageToStage` stage_flip -- Flip as much as we can
+    stage_flip `fromFailedStageToStage` stage_remove -- When we no longer can flip, we remove last_placed pred
     stage_remove `fromStageToStage` stage_next_player
     stage_next_player `fromStageToStage` stage_play
+
+    stage_play `fromFailedStageToStage` stage_count
+    stage_count `fromStageToStage` stage_count --  Keep counting
+    stage_count `fromFailedStageToStage` stage_winner -- When done counting, see who the winner is
+    stage_winner `fromFailedStageToStage` stage_draw -- If noone wins over the other. its a draw.
 
     three <- zero <+ 3
     four <- zero <+ 4
@@ -284,5 +305,6 @@ othello = do
                            ,(tile [ pp [white], coord [three,three] ])
                            ,(tile [ pp [white], coord [four ,four ] ])
                            ]
+    mapM_ (\player -> addPredToInit (points [player, zero])) playernames
 
     initialStageAndPlayer stage_play black

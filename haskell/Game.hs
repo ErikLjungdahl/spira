@@ -76,8 +76,6 @@ runGame g fp =
             modify (\st -> st {player = player})
             initNats
 
-            -- Draw, goes here in case of no available choice
-            initDrawStage
         boardToInit :: M ()
         boardToInit = do
             initialBoard <- gets initialBoard
@@ -86,18 +84,15 @@ runGame g fp =
     in writeFile fp ceptreOutput
 
 -- Generates the stage for draws
--- A player automatically goes to this stage if it has no
---      available choice in an interactive stage
-initDrawStage :: M ()
+initDrawStage :: M StageIdentifier
 initDrawStage = do
     player <- gets player
-    drawPred <- newPred "draw" [player]
     varPlayer <- newBinding player
-    end <- newPred "end" []
+    draw <- newEmptyPred "draw"
 
-    let appliedDraw = drawPred [varPlayer]
-    drawStage <- stage "draw" False [[appliedDraw] -* [end []]] varPlayer
+    drawStage <- stage "draw" False [[] -* [draw]] varPlayer
     modify (\st -> st {drawStage = drawStage})
+    return drawStage
 
 -- Creates a Fact Pred
 newFactConstructor :: String -> [Type] -> M ([Var] -> Pred)
@@ -215,12 +210,12 @@ stage n isInteractive impls playerVar= do
 
     -- Add draw upon failed stage
     -- TODO should probably be up to the user. Not all games ends in a draw when someone can't do something
-    when isInteractive $ do
-        drawStage <- gets drawStage
-        transition (n ++ "_to_draw")
-                   ((res `toStageWith` playerVar)
-                   -*
-                    (drawStage `toStageWith` playerVar))
+    --when isInteractive $ do
+    --    drawStage <- gets drawStage
+    --    transition (n ++ "_to_draw")
+    --               ((res `toStageWith` playerVar)
+    --               -*
+    --                (drawStage `toStageWith` playerVar))
 
     return res
 -- Helper function for fromStageToStage
@@ -329,7 +324,7 @@ initialStageAndPlayer :: StageIdentifier -> Var -> M ()
 initialStageAndPlayer (pretoken,StagePred n ,_) startingPlayer = do
     modify (\st -> st { initStage = Just n})
     let a = pretoken [startingPlayer]
-    addAppliedPredsToInit [a]
+    addPredToInit a
 
 
 -- Each Pred in the list needs to be applied,
@@ -475,7 +470,7 @@ initBoard cols rows = do
     free <- newEmptyConstructor "free" playerPieceType
 
     tile <- newPred "tile" [playerPieceType, coordType]
-    --tile `outputNames` ["player/Piece", "Col/Row"]
+    tile `outputNames` ["player/Piece", "Col/Row"]
     let b = Board
             { coord_t_c  = (coordType, coord)
             , piece_t = pieceType
@@ -507,11 +502,11 @@ inALine n playerPiece = do
 
 inARow :: Int -> Var -> M Implication
 inARow n playerPiece = do
-    inARowColumDiagonalHelper playerPiece [0..n-1] [0..]
+    inARowColumDiagonalHelper playerPiece [0..n-1] (repeat 0)
 
 inAColumn :: Int -> Var -> M Implication
 inAColumn n playerPiece = do
-    inARowColumDiagonalHelper playerPiece [0..] [0..n-1]
+    inARowColumDiagonalHelper playerPiece (repeat 0) [0..n-1]
 
 inADiagonal :: Int -> Var -> M [Implication]
 inADiagonal n playerPiece = do
