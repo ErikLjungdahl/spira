@@ -184,6 +184,14 @@ def line_to_coord(line, dic):
 
 
 def isCoordinates(line):
+	""" Checks if a line contains coordinate pair.
+
+	Parameters:
+	line (String) - A single line from log.txt that we will parse
+
+	Returns:
+	(boolean) - True if we have a pair of ints or more.
+	"""
 	total_coords = 0
 	for elem in line:
 		if elem.isdigit():
