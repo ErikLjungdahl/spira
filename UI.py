@@ -139,7 +139,7 @@ def print_matrix(mat):
 		size = size - 1
 		for elem in row:
 			r = r + "\33[0m|" + elem
-		r += "|"
+		r += "\33[0m" + "|"
 		print (r)
 
 	last_row = " "
@@ -164,17 +164,16 @@ def line_to_coord(line, dic):
 	list_lines = line.split(",")
 	positions = {}
 	for l in list_lines:
-		line = clean_numbers(l).replace("}","").replace("{","")
+		line = clean_numbers(l).replace("}","").replace("{","").replace("\n","")
 		line = line.split(" ")[1:] #Removes the blank spot at start
 		key = line[0]
-		if len(line) > 2 :
+		if isCoordinates(line) :
 			if key == "free":
 				player = key
 			elif not line[1] == "free":
 				player = line[2]
 			else :
 				player = line[1]
-
 			xPos, yPos = int(line[-2]), int(line[-1])
 			if player in positions:
 				positions[player].append( (xPos,yPos) )
@@ -182,6 +181,17 @@ def line_to_coord(line, dic):
 				positions[player] = [(xPos,yPos)]
 	
 	return positions
+
+
+def isCoordinates(line):
+	total_coords = 0
+	for elem in line:
+		if elem.isdigit():
+			total_coords += 1
+ 	if total_coords == 2:
+ 		return True
+ 	else:
+ 		return False
 
 
 
