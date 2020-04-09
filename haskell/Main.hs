@@ -112,9 +112,10 @@ chess = do
     let piece = piece_t board
     let (playerPieceType, pnp, free) = playerPiece_t_c_free board
     let tile = tile_p board
+    --tile `outputNames` ["Player","Col/Row"]
+
 
     horse <- newEmptyConstructor "horse" piece
-    tile `outputNames` ["Turn", "Piece", "Col", "Row"]
 
     pnp_neq <- initPlayerAndPieceNotEQ opp
 
