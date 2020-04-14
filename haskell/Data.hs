@@ -10,7 +10,7 @@ data St = St
     , initStage :: Maybe Name
     , initialPreds :: [Pred]
     , nbrOfBindings :: Int
-    , player :: Type
+    , playerType :: Type
     , nats :: (Type,Const,Var)
     , turn :: Pred
     , drawStage :: StageIdentifier

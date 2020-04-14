@@ -10,7 +10,7 @@ module Compiler
 import Data
 
 -- Libraries
-import qualified Data.Map.Lazy as Map (insert, lookup, empty, toList)
+import qualified Data.Map.Lazy as Map (lookup)
 import Data.Map.Lazy (Map)
 import Control.Monad.Writer
 import Data.List (intercalate, intersperse)
@@ -33,10 +33,6 @@ compile st = snd $ runWriter (createGameFromSt st)
 
 tell' :: String -> O ()
 tell'  = \s -> tell  (s ++ "\n")
-tell'' :: String -> O ()
-tell'' = \s -> tell' (s ++ "\n")
-tell_ :: String -> O ()
-tell_ = \s -> tell (s ++ " ")
 
 createGameFromSt :: St -> O ()
 createGameFromSt st = do
@@ -81,6 +77,7 @@ createPreds = mapM_ (\p -> do
                     appliedPred <- checkVars n ts vars
                     tell $ appliedPred
                 _ -> error "You can't apply a predicate to a variable in the top level"
+            Persistent _ -> error "You can't write a Persistent predicate in the top level"
 
 
 helper :: Name -> [Type] -> Name -> O ()
@@ -131,14 +128,14 @@ createGames colnames= mapM_ createGame
         implicationsColNames :: String -> Implication -> O ()
         implicationsColNames ident (Implication ls _) = do
             let res = foldl (predColNames) [] ls
-                colns = [cn | (b,cn) <- res]
+                colns = [cn | (_,cn) <- res]
             tell' $ "%% " ++ ident ++ " " ++ (intercalate " " colns)
             return ()
 
         predColNames :: [(Name,String)] -> Pred -> [(Name,String)]
         predColNames context = \case
             ApplyPred p vars -> let
-                helper cns =
+                f cns =
                     foldl (\ctx vc ->
                         foldl
                             (\ctx' maybeBac ->
@@ -153,8 +150,8 @@ createGames colnames= mapM_ createGame
                         (zip vars cns)
                 in
                 case Map.lookup p colnames of
-                    Just cns -> helper cns
-                    Nothing -> helper $ repeat $ intersperse '/' (repeat '_')
+                    Just cns -> f cns
+                    Nothing -> f $ repeat $ intersperse '/' (repeat '_')
             _ -> context
             where
                 bindingAndColname :: (Var, String) -> [Maybe (Name, String)]
@@ -169,13 +166,13 @@ checkVars:: Name -> [Type] -> [Var] -> O String
 checkVars n ts vars = let
     checkVar :: Type -> Var -> O String
     checkVar t = \case
-        Binding n tp ->
+        Binding n' tp ->
             if (t /= tp)
             then error "Wrong type when applying"
-            else return n
-        AVar (Constructor nc ts tc) vars -> do
-            when (t /= tc) $ error $ "Wrong type when applying Pred " ++ n ++ " to Constructor " ++ nc ++ " with Vars " ++ show vars
-            checkedvars <- zipWithM checkVar ts vars
+            else return n'
+        AVar (Constructor nc ts' tc) vars' -> do
+            when (t /= tc) $ error $ "Wrong type when applying Pred " ++ n ++ " to Constructor " ++ nc ++ " with Vars " ++ show vars'
+            checkedvars <- zipWithM checkVar ts' vars'
             if checkedvars == []
             then return nc
             else let checkedvars' = intercalate " " checkedvars
@@ -193,12 +190,13 @@ createAppliedPred = \case
     Bwd n ts  -> if ts == [] then return n
         else error "bwd needs to be applied to vars"
     StagePred n -> return $ "stage " ++ n
-    ApplyPred pred vars -> case pred of
+    ApplyPred p vars -> case p of
         Pred n ts -> checkVars n ts vars
         Bwd  n ts -> checkVars n ts vars
         StagePred _-> error "Can't apply something to a Stage predicate"
         -- TODO Can this be supported? Does it make sense?
         ApplyPred _ _-> error "Applying something to an already applied thing isn't supported"
+        p' -> error $ "Can't create an applied pred of: " ++ show p'
     Persistent p -> do
         p' <- createAppliedPred p
         return ('$':p')

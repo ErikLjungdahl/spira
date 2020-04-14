@@ -14,22 +14,20 @@ import Compiler
 
 -- Libraries
 import Prelude hiding (pred, init, lookup)
-import Data.List (intercalate, intersperse)
-import Data.List.Split (splitOn)
 import Control.Monad.State
-import qualified Data.Map.Lazy as Map (insert, lookup, empty, toList)
+import qualified Data.Map.Lazy as Map (insert, empty)
 import Data.Map.Lazy (Map)
 
--- For debugging --TODO remove when finished product.
-import Debug.Trace
+-- For debugging
+--import Debug.Trace
 
 
 type M a = State St a
 
 runGame :: M () -> FilePath -> IO ()
 runGame g fp =
-    let ceptreOutput = compile st
-        (_, st) = runState (default_config >> g >> boardToInit ) initSt
+    let ceptreOutput = compile finalSt
+        (_, finalSt) = runState (default_config >> g >> boardToInit ) initSt
         initSt = St
             { types  = []
             , preds  = []
@@ -46,7 +44,7 @@ runGame g fp =
             player <- newType "player"
             -- turn_p <- newPred "turn" [player]
 
-            modify (\st -> st {player = player})
+            modify (\st -> st {playerType = player})
             initNats
 
         boardToInit :: M ()
@@ -59,7 +57,7 @@ runGame g fp =
 -- Generates the stage for draws
 initDrawStage :: M StageIdentifier
 initDrawStage = do
-    player <- gets player
+    player <- gets playerType
     varPlayer <- newBinding player
     draw <- newEmptyPred "draw"
 
@@ -135,7 +133,7 @@ makePersistent ::  Pred ->  Pred
 makePersistent p = Persistent p
 players :: [String] -> M ([Var], StageIdentifier , ([Var] -> Pred))
 players names = do
-    player <- gets player -- newType "player"
+    player <- gets playerType -- newType "player"
     opp <- newFactConstructor "opp" [player, player]
     players <- mapM (\n -> newEmptyConstructor n player) (names)
     -- noone <- newEmptyConstructor "free" player
@@ -147,11 +145,11 @@ players names = do
 
     nps <- nextPlayerStage opp
     return (players, nps, opp)
-    where
-        initiatePlayers [] p = return ()
-        initiatePlayers (n:ns) p = do
-            newConstructor n [] p
-            initiatePlayers ns p
+    --where
+    --    initiatePlayers [] p = return ()
+    --    initiatePlayers (n:ns) p = do
+    --        newConstructor n [] p
+    --        initiatePlayers ns p
 
         --initiateOpponents []      n2  opp = return ()
         --initiateOpponents (n1:ns) (n2:n2s) opp = newBinding n1 n2 opp
@@ -163,7 +161,7 @@ players names = do
 --      transition between stages with e.g. `fromStageToStage`
 stage :: Name -> IsInteractive -> [Implication] -> Var -> M StageIdentifier
 stage n isInteractive impls playerVar= do
-    player <- gets player
+    player <- gets playerType
     preToken <- if isInteractive
         then newPred ("pretoken_" ++ n)[player]
         else newPred ("pretoken_" ++ n)[player]
@@ -205,7 +203,7 @@ toStageWith (preToken,stagePred,_) v =
 -- A succesful stage being one where the player performed one of the actions in a stage
 fromStageToStage :: StageIdentifier -> StageIdentifier -> M ()
 fromStageToStage from to = do
-    p <- gets player
+    p <- gets playerType
     pVar<- newBinding p
     transition (show (sndOf3 from) ++ "_to_" ++ show (sndOf3 to))
             $ (from `fromStageWith` pVar)
@@ -216,14 +214,17 @@ fromStageToStage from to = do
 -- Usually used from winStage to nextPlayerStage
 fromFailedStageToStage :: StageIdentifier -> StageIdentifier -> M ()
 fromFailedStageToStage from to = do
-    p <- gets player
+    p <- gets playerType
     pVar<- newBinding p
     transition (show (sndOf3 from) ++ "_failed_to_" ++ show (sndOf3 to))
             $ (from `toStageWith` pVar)
               -*
               (to `toStageWith` pVar)
+fstOf3 :: (a,b,c) -> a
 fstOf3 (a,_,_) = a
+sndOf3 :: (a,b,c) -> b
 sndOf3 (_,b,_) = b
+trdOf3 :: (a,b,c) -> c
 trdOf3 (_,_,c) = c
 
 --TODO Name should probably be auto-generated
@@ -242,7 +243,7 @@ nextPlayerStage :: ([Var] -> Pred) -> M StageIdentifier
 nextPlayerStage opp = do
     let n = "next_player"
 
-    player <- gets player
+    player <- gets playerType
     preToken <- newPred ("pretoken_" ++ n)[player]
     posToken <- newPred ("postoken_" ++ n)[player]
 
@@ -270,12 +271,12 @@ applyVar c vs = AVar c vs
 -- Applies a constructor to a Var n times,
 -- useful for recursive constructors such as suc
 applyVarTimes :: Const -> Var -> Int -> Var
-applyVarTimes s x 0 = x
+applyVarTimes _ x 0 = x
 applyVarTimes s x i = s [(applyVarTimes s x (i-1))]
 
 (<+) :: Var -> Int -> M Var
 (<+) v n = do
-    (nat, s, z) <- gets nats
+    (_, s, _) <- gets nats
     let appliedVar = applyVarTimes s v n
     return appliedVar
 
@@ -298,6 +299,7 @@ initialStageAndPlayer (pretoken,StagePred n ,_) startingPlayer = do
     modify (\st -> st { initStage = Just n})
     let a = pretoken [startingPlayer]
     addPredToInit a
+initialStageAndPlayer _ _ = error "Invaldig StageIdentifier"
 
 
 -- Each Pred in the list needs to be applied,
@@ -312,7 +314,7 @@ addPredToInit p = modify (\st -> st {initialPreds = p : initialPreds st})
 
 addToInitialBoard :: Pred -> M ()
 addToInitialBoard p = case p of
-    ApplyPred (Pred "tile" _) (pnp:coord:[]) -> do
+    ApplyPred (Pred "tile" _) (_:coord:[]) -> do
         board <- gets initialBoard
         let updatedBoard = Map.insert coord p board
         modify $ \st -> st {initialBoard = updatedBoard}
@@ -340,7 +342,7 @@ initNats = do
 -- Returns the predicate "lt" which needs to be applied to something to be used.
 initLT :: M ([Var] -> Pred)
 initLT = do
-    (nat,s,z) <- gets nats
+    (nat,_,z) <- gets nats
     lt <- newFactConstructor "lt" [nat, nat]
 
     n <- newBinding nat
@@ -356,7 +358,7 @@ initLT = do
 --TODO Make helper function so this isn't a copy pasta of initLT
 initLTE :: M ([Var] -> Pred)
 initLTE = do
-    (nat,s,z) <- gets nats
+    (nat,_,z) <- gets nats
     lte <- newFactConstructor "lte" [nat, nat]
 
     n <- newBinding nat
@@ -370,7 +372,7 @@ initLTE = do
 
 initEQ :: M ([Var] -> Pred)
 initEQ = do
-    (nat,s,z) <- gets nats
+    (nat,_,_) <- gets nats
     eq <- newFactConstructor "eq" [nat, nat]
 
     n <- newBinding nat
@@ -385,8 +387,8 @@ initEQ = do
 
 initCoordEQ :: M ([Var] -> Pred)
 initCoordEQ = do
-    eq <-initEQ
-    (nat, suc, zero) <- gets nats
+    -- eq <-initEQ
+    (nat, _, _) <- gets nats
     board <- gets board
     let (coordType, coord) = coord_t_c board
 
@@ -400,8 +402,9 @@ initCoordEQ = do
 
     return coord_eq
 
+initPlayerAndPieceNotEQ :: ([Var] -> Pred) -> M ([Var] -> Pred)
 initPlayerAndPieceNotEQ opp = do
-    player <- gets player
+    player <- gets playerType
     board <- gets board
     let piece = piece_t board
     let (playerPieceType, pnp, free) = playerPiece_t_c_free board
@@ -427,7 +430,7 @@ initPlayerAndPieceNotEQ opp = do
 -- Sets all tiles to free. To add a playerPiece to the initialBoard, use @addToInitialBoard
 initBoard :: Int -> Int -> M Board
 initBoard cols rows = do
-    playertype <- gets player
+    playertype <- gets playerType
     pieceType <- newType "piece"
 
     ( nat,s,z) <- gets nats
@@ -454,7 +457,7 @@ initBoard cols rows = do
 
     modify $ \st -> st {board = b}
 
-    mapM (\c ->
+    mapM_ (\c ->
             addToInitialBoard $
                 tile [free, c]
          )
@@ -491,11 +494,10 @@ inADiagonal n playerPiece = do
 -- Var should be an applied Constructor of playerPieceType
 inARowColumDiagonalHelper :: Var -> [Int] -> [Int] -> M Implication
 inARowColumDiagonalHelper playerPiece cols rows = do
-    player <- gets player
-    (nat, s, z) <- gets nats
+    (nat, s, _) <- gets nats
 
     board <- gets board
-    let (coordType, coord) = coord_t_c board
+    let (_, coord) = coord_t_c board
     let tile = tile_p board
 
     x <- newBinding nat
@@ -505,7 +507,7 @@ inARowColumDiagonalHelper playerPiece cols rows = do
                        (zip cols rows)
     return $ Implication occupied []
 
-
+numberType :: St -> Type
 numberType = fstOf3 . nats
 
 
