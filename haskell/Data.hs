@@ -1,5 +1,36 @@
 module Data where
 
+import Data.Map.Lazy (Map)
+
+data St = St
+    { types  :: [Type]
+    , preds  :: [Pred]
+    , consts :: [Constructor]
+    , games  :: [Game]
+    , initStage :: Maybe Name
+    , initialPreds :: [Pred]
+    , nbrOfBindings :: Int
+    , player :: Type
+    , nats :: (Type,Const,Var)
+    , turn :: Pred
+    , drawStage :: StageIdentifier
+    , columnNames :: Map Pred [Name]
+    , board :: Board
+    , initialBoard :: Map Var Pred
+    }
+
+data Board = Board
+    { coord_t_c  :: (Type, Const)
+    , piece_t :: Type
+    , playerPiece_t_c_free :: (Type, Const, Var)
+    , player_t_c_free :: (Type, Const, Var)
+    , tile_p :: ([Var] -> Pred)
+    }
+
+type Const = [Var] -> Var
+type StageIdentifier = (([Var] -> Pred),Pred,([Var] -> Pred))
+
+
 data Game = Stage Name [Implication] IsInteractive -- "stage " ++ Stagepred ++ ...
           | Transition Name Implication
           deriving (Show)
@@ -39,6 +70,12 @@ instance Show Pred where
     show p = case p of
         StagePred n -> n
         s -> show s
+
+
+
+
+
+
 
 --type StageTokens = (Pred, Pred)
 

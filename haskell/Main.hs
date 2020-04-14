@@ -1,7 +1,5 @@
 import Game
-import Control.Monad.State
 
-import Prelude hiding ((+))
 import Data.List
 
 main :: IO ()
