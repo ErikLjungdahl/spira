@@ -182,7 +182,7 @@ stage n isInteractive impls playerVar= do
     let res = (preToken, stagePred, posToken)
 
     -- Add draw upon failed stage
-    -- TODO should probably be up to the user. Not all games ends in a draw when someone can't do something
+    -- should probably be up to the user. Not all games ends in a draw when someone can't do something
     --when isInteractive $ do
     --    drawStage <- gets drawStage
     --    transition (n ++ "_to_draw")
@@ -279,7 +279,7 @@ applyVarTimes s x i = s [(applyVarTimes s x (i-1))]
     let appliedVar = applyVarTimes s v n
     return appliedVar
 
---TODO Max 26 Vars currently
+--TODO Max 26 Vars currently, add more
 --     nbrOfBindings could maybe be reset at end of stages/transitions
 --     Or perhaps it should be handled in the backend
 -- Returns a Binding that can be patternmatched on.

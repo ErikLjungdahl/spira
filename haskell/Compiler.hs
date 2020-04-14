@@ -94,7 +94,6 @@ createConsts cs = mapM_ (\(Constructor n ts t) -> do
                             tell' ".")
                         cs
 
---TODO Test
 createGames :: Map Pred [Name] -> [Game] -> O ()
 createGames colnames= mapM_ createGame
     where
@@ -166,7 +165,6 @@ createGames colnames= mapM_ createGame
                             (bindingAndColname
                             ) ( zip vs (splitOn "/" cname))
 -- Create the ceptre string from a Pred
---TODO Test
 checkVars:: Name -> [Type] -> [Var] -> O String
 checkVars n ts vars = let
     checkVar :: Type -> Var -> O String
@@ -208,7 +206,6 @@ createAppliedPred = \case
     BwdImplication _ _ -> error "Can't create BwdImplication in transition/stage"
 
 
---TODO Test
 createInit :: Initial -> O ()
 createInit (Initial n ps) = do
     tell "#trace _ "
