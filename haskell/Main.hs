@@ -1,7 +1,5 @@
 import Game
-import Control.Monad.State
 
-import Prelude hiding ((+))
 import Data.List
 
 main :: IO ()
@@ -20,7 +18,7 @@ ticTacToe = do
     tile `outputNames` ["Player","Row/Col"]
 
     nat <- gets numberType
-    player <- gets player
+    player <- gets playerType
 
     (playernames, stage_next_player, opp) <- players ["oskar","xena"]
 
@@ -59,7 +57,7 @@ connectFour = do
     --nats
     --players ["jennie","simon","erik","peter","nicke","oskar"]
     (nat,suc,zero) <- gets nats
-    player <- gets player
+    player <- gets playerType
     (playernames, stage_next_player, opp) <- players ["xor","oskar"]
 
 
@@ -105,7 +103,7 @@ connectFour = do
 chess :: M ()
 chess = do
     (nat,suc,zero) <- gets nats
-    player <- gets player
+    player <- gets playerType
     (playernames, stage_next_player, opp) <- players ["hugo","musen"]
     board <- initBoard 8 8
     let (coordType, coord) = coord_t_c board
@@ -172,7 +170,7 @@ chess = do
 othello :: M ()
 othello = do
     (nat,suc,zero) <- gets nats
-    player <- gets player
+    player <- gets playerType
     (playernames, stage_next_player, opp) <- players ["black","white"]
     -- opp `outputNames` ["_","Opponent"]
 
