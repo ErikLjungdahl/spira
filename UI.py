@@ -10,8 +10,9 @@ def main(fp_ceptre, fp_game):
 	It reads each line from the output to the terminal and parse it
 	to make it more readable and clear.
 
-	:param fp_ceptre - Filepath and run command to the Ceptre-bin file.
-	:param fp_game   - Filepath to the .hs file to run.
+	Parameters:
+	fp_ceptre (String) - Filepath and run command to the Ceptre-bin file.
+	fp_game (String)   - Filepath to the .hs file to run.
 	"""
 	is_start = True
 	is_finished = False
