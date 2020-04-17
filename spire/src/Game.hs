@@ -3,7 +3,54 @@
 
 --TODO Only export the functions that we want the user to be able to use.
 module Game
-    ( module Game
+    (
+      -- * Constructors
+      newPred
+    , newType
+    , newConstructor
+    , runGame
+    , initDrawStage
+    , newFactConstructor
+    -- *** Fact thingies
+    , (-->)
+    , emitFact
+    , newPred
+    , newEmptyPred
+    , newConstructor
+    , newEmptyConstructor
+    , newType
+    , addPred
+    , makePersistent
+    , players
+    -- * Stages
+    , stage
+    , fromStageWith
+    , toStageWith
+    , fromStageToStage
+    , fromFailedStageToStage
+    , nextPlayerStage
+    , applyVar
+    , applyVarTimes
+    , (<+)
+    , newBinding
+    , initialStageAndPlayer
+    , addAppliedPredsToInit
+    , addPredToInit
+    , addToInitialBoard
+    , (-*)
+    , initLT
+    , initLTE
+    , initEQ
+    , initCoordEQ
+    , initPlayerAndPieceNotEQ
+    , initBoard
+    , inALine
+    , inARow
+    , inAColumn
+    , inADiagonal
+    , numberType
+    , outputNames
+    , M
     , module Data
     , module Control.Monad.State
     ) where
