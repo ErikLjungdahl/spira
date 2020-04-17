@@ -23,7 +23,7 @@ import Data.Map.Lazy (Map)
 
 
 type M a = State St a
-
+-- | Runs the DSL and compiles it to Ceptre
 runGame :: M () -> FilePath -> IO ()
 runGame g fp =
     let ceptreOutput = compile finalSt
@@ -65,59 +65,80 @@ initDrawStage = do
     modify (\st -> st {drawStage = drawStage})
     return drawStage
 
--- | Creates a Fact constructor
-newFactConstructor :: String -> [Type] -> M ([Var] -> Pred)
-newFactConstructor s tx = do
-    let p = Bwd s tx
-    addPred p
-    return $ \vars -> ApplyPred p vars
---
--- Takes two ApplyPreds on Bwd-predicates and creates a bwd-implication
-(-->) :: Pred -> Pred -> Pred
-b1 --> b2 = b1 `BwdImplication` b2
 
--- Used after (-->) to output the logical implication
-emitFact :: Pred -> M ()
-emitFact p = case p of
-    BwdImplication _ _ -> addPred p
-    ApplyPred (Bwd _ _) _ -> addPred p
-    _ -> error "Not a Fact"
+-- * Constructors
 
-
---TODO check that Pred doesn't already exist
-newPred :: Name -> [Type] -> M ([Var] -> Pred)
-newPred s xt = do
-    let p = Pred s xt
-    addPred p
-    return $ \vars -> ApplyPred p vars
-
-newEmptyPred :: Name -> M Pred
-newEmptyPred s = do
-    p <- newPred s []
-    return $ p []
+--TODO check that type doesn't already exist
+-- | Creates a new type which can be used when creating predicates and Constructors
+newType :: Name -> M Type
+newType t = do
+    let ty = Type t
+    modify (\st -> st { types = ty : types st})
+    return ty
 
 --TODO check that Constructor doesn't already exist
--- Creates a Constructor which can be used in `applyVar` to create an instance of it.
+-- | Creates a Constructor which can be used in `applyVar` to create an instance of it.
 newConstructor :: Name -> [Type] -> Type -> M Const
 newConstructor s xt t = do
     let c = Constructor s xt t
     modify (\st -> st { consts = c : consts st})
     return (\vars -> AVar c vars)
 
--- Special case of `newConstructor`, applies the Constucor to an empty list
--- returns a Var
+-- | Special case of `newConstructor`, applies the Constucor to an empty list
+  -- returns a Var
 newEmptyConstructor :: Name -> Type -> M Var
 newEmptyConstructor n t = do
     constructor <- newConstructor n [] t
     return $ constructor []
 
---TODO check that type doesn't already exist
--- Creates a new type which can be used when creating predicates and Constructors
-newType :: Name -> M Type
-newType t = do
-    let ty = Type t
-    modify (\st -> st { types = ty : types st})
-    return ty
+--TODO check that Pred doesn't already exist
+-- | Creates a new predicate
+newPred :: Name -> [Type] -> M ([Var] -> Pred)
+newPred s xt = do
+    let p = Pred s xt
+    addPred p
+    return $ \vars -> ApplyPred p vars
+
+-- | Creates a new empty predicate
+newEmptyPred :: Name -> M Pred
+newEmptyPred s = do
+    p <- newPred s []
+    return $ p []
+
+-- | Creates a Fact constructor
+newFactConstructor :: String -> [Type] -> M ([Var] -> Pred)
+newFactConstructor s tx = do
+    let p = Bwd s tx
+    addPred p
+    return $ \vars -> ApplyPred p vars
+
+--TODO Max 26 Vars currently, add more
+--     nbrOfBindings could maybe be reset at end of stages/transitions
+--     Or perhaps it should be handled in the backend
+-- | Returns a Binding that can be patternmatched on.
+newBinding :: Type -> M Var
+newBinding t = do
+    n <- gets nbrOfBindings
+    let l = (['A'..] !! n) :[]
+    modify (\st -> st {nbrOfBindings = n + 1})
+    return $ Binding l t
+
+
+
+
+-- * Functions for Facts
+
+-- | Takes two ApplyPreds on Bwd-predicates and creates a bwd-implication
+(-->) :: Pred -> Pred -> Pred
+b1 --> b2 = b1 `BwdImplication` b2
+
+-- | Used after (-->) to output the logical implication
+emitFact :: Pred -> M ()
+emitFact p = case p of
+    BwdImplication _ _ -> addPred p
+    ApplyPred (Bwd _ _) _ -> addPred p
+    _ -> error "Not a Fact"
+
 
 
 addGame :: Game -> M ()
@@ -128,9 +149,12 @@ addPred :: Pred -> M ()
 addPred g = do
     modify (\st -> st { preds = g : preds st})
 
--- Makes a predicate Persistent in the left side of linear implication (-*)
+-- | Makes a predicate Persistent in the left side of linear implication (-*)
 makePersistent ::  Pred ->  Pred
 makePersistent p = Persistent p
+
+-- | Creates all the players and returns their identifiers along with a stage identifier for the next player's stage
+  -- Returns the opposite players.
 players :: [String] -> M ([Var], StageIdentifier , ([Var] -> Pred))
 players names = do
     player <- gets playerType -- newType "player"
@@ -157,7 +181,7 @@ players names = do
         --opponentHelper you []      = return ()
         --opponentHelper you (n2:ns) = undefined
 
--- Creates a stage, returns a StageIdentifier which can be used to create
+-- | Creates a stage, returns a StageIdentifier which can be used to create
 --      transition between stages with e.g. `fromStageToStage`
 stage :: Name -> IsInteractive -> [Implication] -> Var -> M StageIdentifier
 stage n isInteractive impls playerVar= do
@@ -189,18 +213,20 @@ stage n isInteractive impls playerVar= do
     --                (drawStage `toStageWith` playerVar))
 
     return res
--- Helper function for fromStageToStage
+
+-- * Helper functions 
+-- | Helper function for fromStageToStage
 fromStageWith :: StageIdentifier -> Var -> [Pred]
 fromStageWith (_,stagePred,posToken) v =
     [stagePred, posToken [v]]
 
--- Helper function for fromStageToStage
+-- | Helper function for fromStageToStage
 toStageWith :: StageIdentifier -> Var -> [Pred]
 toStageWith (preToken,stagePred,_) v =
     [preToken [v], stagePred]
 
--- Creates a transition which takes a player from one succesful stage to another stage
--- A succesful stage being one where the player performed one of the actions in a stage
+-- | Creates a transition which takes a player from one succesful stage to another stage
+  -- A succesful stage being one where the player performed one of the actions in a stage
 fromStageToStage :: StageIdentifier -> StageIdentifier -> M ()
 fromStageToStage from to = do
     p <- gets playerType
@@ -209,9 +235,9 @@ fromStageToStage from to = do
             $ (from `fromStageWith` pVar)
               -*
               (to `toStageWith` pVar)
--- Creates a transition which takes a player from a failed stage to another stage
--- A Failed stage being one where the player didn't have the requirements for any of the actions.
--- Usually used from winStage to nextPlayerStage
+-- | Creates a transition which takes a player from a failed stage to another stage
+  -- A Failed stage being one where the player didn't have the requirements for any of the actions.
+  -- Usually used from winStage to nextPlayerStage
 fromFailedStageToStage :: StageIdentifier -> StageIdentifier -> M ()
 fromFailedStageToStage from to = do
     p <- gets playerType
@@ -228,17 +254,18 @@ trdOf3 :: (a,b,c) -> c
 trdOf3 (_,_,c) = c
 
 --TODO Name should probably be auto-generated
--- Creates a transition between stages.
--- The user Should use `fromStageToStage` or `fromFailedStageToStage`
+-- | Creates a transition between stages.
+  -- The user Should use `fromStageToStage` or `fromFailedStageToStage`
 transition :: Name -> Implication -> M ()
 transition n (Implication ls rs) = do
     let impl = Implication (qui : ls) rs
     addGame (Transition n impl)
 
-qui :: Pred
-qui = Pred "qui" []
+	where
+		qui :: Pred
+		qui = Pred "qui" []
 
--- Creates the stage which handles giving the next player a token
+-- | Creates the stage which handles giving the next player a token
 nextPlayerStage :: ([Var] -> Pred) -> M StageIdentifier
 nextPlayerStage opp = do
     let n = "next_player"
@@ -264,12 +291,12 @@ nextPlayerStage opp = do
 
     return res
 
--- Takes a Constructor and applied it to a list of Vars, and return an AppliedVar
+-- | Takes a Constructor and applied it to a list of Vars, and return an AppliedVar
 applyVar :: Constructor -> [Var] -> Var
 applyVar c vs = AVar c vs
 
--- Applies a constructor to a Var n times,
--- useful for recursive constructors such as suc
+-- | Applies a constructor to a Var n times,
+  -- useful for recursive constructors such as suc
 applyVarTimes :: Const -> Var -> Int -> Var
 applyVarTimes _ x 0 = x
 applyVarTimes s x i = s [(applyVarTimes s x (i-1))]
@@ -280,20 +307,9 @@ applyVarTimes s x i = s [(applyVarTimes s x (i-1))]
     let appliedVar = applyVarTimes s v n
     return appliedVar
 
---TODO Max 26 Vars currently, add more
---     nbrOfBindings could maybe be reset at end of stages/transitions
---     Or perhaps it should be handled in the backend
--- Returns a Binding that can be patternmatched on.
-
-newBinding :: Type -> M Var
-newBinding t = do
-    n <- gets nbrOfBindings
-    let l = (['A'..] !! n) :[]
-    modify (\st -> st {nbrOfBindings = n + 1})
-    return $ Binding l t
 
 
--- Sets the initial stage that given player starts in
+-- |Sets the initial stage that given player starts in
 initialStageAndPlayer :: StageIdentifier -> Var -> M ()
 initialStageAndPlayer (pretoken,StagePred n ,_) startingPlayer = do
     modify (\st -> st { initStage = Just n})
@@ -301,16 +317,15 @@ initialStageAndPlayer (pretoken,StagePred n ,_) startingPlayer = do
     addPredToInit a
 initialStageAndPlayer _ _ = error "Invaldig StageIdentifier"
 
+-- * Initial values
 
--- Each Pred in the list needs to be applied,
--- since they need to actually have a value.
+-- | Each Pred in the list needs to be applied,
+  -- since they need to actually have a value.
 addAppliedPredsToInit :: [Pred] -> M ()
 addAppliedPredsToInit = mapM_ addPredToInit
 
 addPredToInit :: Pred -> M ()
 addPredToInit p = modify (\st -> st {initialPreds = p : initialPreds st})
-
-
 
 addToInitialBoard :: Pred -> M ()
 addToInitialBoard p = case p of
@@ -321,16 +336,16 @@ addToInitialBoard p = case p of
     _ -> error "Can't add non-tile Pred to InitialBoard"
 
 
-
 infix 4 -* -- Lower presedence than ++
--- Linear Implication (called lollipop)
--- Removes the left hand side and gives the right hand side
+
+-- | Linear Implication (called lollipop)
+  -- Removes the left hand side and gives the right hand side
 (-*) :: [Pred] -> [Pred] -> Implication
 ps1 -* ps2 = Implication ps1 ps2
 
---
+-- * Initalize helper functions in Ceptre
 
-
+-- | Initializes the natural numbers, successor and zero constructors. 
 initNats :: M ()
 initNats = do
     nat <- newType "nat"
@@ -338,8 +353,8 @@ initNats = do
     s <- newConstructor "s" [nat] nat
     modify (\st -> st {nats=(nat,s,z)})
 
--- Initias the LT operator (less-than)
--- Returns the predicate "lt" which needs to be applied to something to be used.
+-- | Initializes the LT operator (less-than) (<)
+  -- Returns the predicate "lt" which needs to be applied to something to be used.
 initLT :: M ([Var] -> Pred)
 initLT = do
     (nat,_,z) <- gets nats
@@ -353,8 +368,9 @@ initLT = do
     emitFact $ lt [z, np1]
     emitFact $ (lt [n, m]) --> (lt [np1,mp1])
     return lt
--- Initias the LTE operator (less-than-or-equal) (<=)
--- Returns the predicate "lte" which needs to be applied to something to be used.
+
+-- | Initializes the LTE operator (less-than-or-equal) (<=)
+  -- Returns the predicate "lte" which needs to be applied to something to be used.
 --TODO Make helper function so this isn't a copy pasta of initLT
 initLTE :: M ([Var] -> Pred)
 initLTE = do
@@ -370,6 +386,7 @@ initLTE = do
     emitFact $ (lte [n, m]) --> (lte [np1,mp1])
     return lte
 
+-- | Initializes the EQ operator (equal) (=)
 initEQ :: M ([Var] -> Pred)
 initEQ = do
     (nat,_,_) <- gets nats
@@ -384,7 +401,7 @@ initEQ = do
     --emitFact $ (eq [n, m]) --> (eq [np1,mp1])
     return eq
 
-
+-- | Initializes the EQ operator for coordinates 
 initCoordEQ :: M ([Var] -> Pred)
 initCoordEQ = do
     -- eq <-initEQ
@@ -402,6 +419,7 @@ initCoordEQ = do
 
     return coord_eq
 
+-- | Initializes the not EQ operator for the Player and Piece Constructor that are used for the tiles of the board
 initPlayerAndPieceNotEQ :: ([Var] -> Pred) -> M ([Var] -> Pred)
 initPlayerAndPieceNotEQ opp = do
     player <- gets playerType
@@ -424,10 +442,8 @@ initPlayerAndPieceNotEQ opp = do
     return pnp_neq
 
 
-
-
--- Initializes the board
--- Sets all tiles to free. To add a playerPiece to the initialBoard, use @addToInitialBoard
+-- | Initializes the board
+  -- Sets all tiles to free. To add a playerPiece to the initialBoard, use @addToInitialBoard
 initBoard :: Int -> Int -> M Board
 initBoard cols rows = do
     playertype <- gets playerType
@@ -467,8 +483,9 @@ initBoard cols rows = do
     return b
 
 
+-- * Helper functions for the board
 
--- Combines inARow, inAColumn, inADiagonal
+-- | Combines inARow, inAColumn, inADiagonal
 inALine :: Int -> Var -> M [Implication]
 inALine n playerPiece = do
     rowrule <- inARow    n playerPiece
@@ -476,14 +493,17 @@ inALine n playerPiece = do
     diarules <- inADiagonal n playerPiece
     return $ rowrule:colrule:diarules
 
+-- | Checks that a specific player piece is n times in a row
 inARow :: Int -> Var -> M Implication
 inARow n playerPiece = do
     inARowColumDiagonalHelper playerPiece [0..n-1] (repeat 0)
 
+-- | Checks that a specific player piece is n times in a column
 inAColumn :: Int -> Var -> M Implication
 inAColumn n playerPiece = do
     inARowColumDiagonalHelper playerPiece (repeat 0) [0..n-1]
 
+-- | Checks that a specific player piece is n times in a diagonal
 inADiagonal :: Int -> Var -> M [Implication]
 inADiagonal n playerPiece = do
     occupiedUp <- inARowColumDiagonalHelper playerPiece [0..n-1] [0..n-1]
@@ -491,7 +511,7 @@ inADiagonal n playerPiece = do
 
     return $ [occupiedUp, occupiedDown]
 
--- Var should be an applied Constructor of playerPieceType
+-- | Var should be an applied Constructor of playerPieceType
 inARowColumDiagonalHelper :: Var -> [Int] -> [Int] -> M Implication
 inARowColumDiagonalHelper playerPiece cols rows = do
     (nat, s, _) <- gets nats
@@ -507,11 +527,13 @@ inARowColumDiagonalHelper playerPiece cols rows = do
                        (zip cols rows)
     return $ Implication occupied []
 
+-- | Gets the number type for natural number and is used instead of nats
 numberType :: St -> Type
 numberType = fstOf3 . nats
 
 
 -- TODO Typecheck the columnnames, right amount of arguments etc
+-- | Outputs names of the variables during runtime 
 outputNames :: ([Var] -> Pred) -> [Name] -> M ()
 outputNames fp names = do
     let ApplyPred p _ = fp []
