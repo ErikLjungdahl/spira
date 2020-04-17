@@ -3,55 +3,55 @@
 
 --TODO Only export the functions that we want the user to be able to use.
 module Game
-    (
-      -- * Constructors
-      newPred
+    ( runGame
+    -- * Constructors
     , newType
-    , newConstructor
-    , runGame
-    , initDrawStage
-    , newFactConstructor
-    -- *** Fact thingies
-    , (-->)
-    , emitFact
-    , newPred
-    , newEmptyPred
     , newConstructor
     , newEmptyConstructor
-    , newType
-    , addPred
+    , newPred
+    , newEmptyPred
+    , newFactConstructor
+    , newBinding
     , makePersistent
+    -- ** Functions for Facts
+    , (-->)
+    , emitFact
+    -- * Player creation
     , players
-    -- * Stages
+    -- * Stages and transitions
+    , (-*)
     , stage
-    , fromStageWith
-    , toStageWith
     , fromStageToStage
     , fromFailedStageToStage
     , nextPlayerStage
-    , applyVar
-    , applyVarTimes
-    , (<+)
-    , newBinding
+    , initDrawStage
+    -- * Initial values
     , initialStageAndPlayer
     , addAppliedPredsToInit
     , addPredToInit
     , addToInitialBoard
-    , (-*)
+    -- * Initalize helper functions in Ceptre
+    , initNats
     , initLT
     , initLTE
     , initEQ
     , initCoordEQ
     , initPlayerAndPieceNotEQ
+    -- * Helper functions for the board
     , initBoard
     , inALine
     , inARow
     , inAColumn
     , inADiagonal
-    , numberType
+    , addToInitialBoard
+    -- * UI functions
     , outputNames
+    -- * utility functions
+    , numberType
+    , applyVarTimes
+    , (<+)
     , M
-    , module Data
+    , module Data --  TODO only export some functions in the records
     , module Control.Monad.State
     ) where
 
@@ -100,18 +100,6 @@ runGame g fp =
             foldM (\_ -> addPredToInit) () initialBoard
 
     in writeFile fp ceptreOutput
-
--- Generates the stage for draws
-initDrawStage :: M StageIdentifier
-initDrawStage = do
-    player <- gets playerType
-    varPlayer <- newBinding player
-    draw <- newEmptyPred "draw"
-
-    drawStage <- stage "draw" False [[] -* [draw]] varPlayer
-    modify (\st -> st {drawStage = drawStage})
-    return drawStage
-
 
 -- * Constructors
 
@@ -228,6 +216,16 @@ players names = do
         --opponentHelper you []      = return ()
         --opponentHelper you (n2:ns) = undefined
 
+
+-- * Stages and transitions
+
+infix 4 -* -- Lower presedence than ++
+
+-- | Linear Implication (called lollipop)
+  -- Removes the left hand side and gives the right hand side
+(-*) :: [Pred] -> [Pred] -> Implication
+ps1 -* ps2 = Implication ps1 ps2
+
 -- | Creates a stage, returns a StageIdentifier which can be used to create
 --      transition between stages with e.g. `fromStageToStage`
 stage :: Name -> IsInteractive -> [Implication] -> Var -> M StageIdentifier
@@ -261,16 +259,6 @@ stage n isInteractive impls playerVar= do
 
     return res
 
--- * Helper functions 
--- | Helper function for fromStageToStage
-fromStageWith :: StageIdentifier -> Var -> [Pred]
-fromStageWith (_,stagePred,posToken) v =
-    [stagePred, posToken [v]]
-
--- | Helper function for fromStageToStage
-toStageWith :: StageIdentifier -> Var -> [Pred]
-toStageWith (preToken,stagePred,_) v =
-    [preToken [v], stagePred]
 
 -- | Creates a transition which takes a player from one succesful stage to another stage
   -- A succesful stage being one where the player performed one of the actions in a stage
@@ -293,12 +281,16 @@ fromFailedStageToStage from to = do
             $ (from `toStageWith` pVar)
               -*
               (to `toStageWith` pVar)
-fstOf3 :: (a,b,c) -> a
-fstOf3 (a,_,_) = a
-sndOf3 :: (a,b,c) -> b
-sndOf3 (_,b,_) = b
-trdOf3 :: (a,b,c) -> c
-trdOf3 (_,_,c) = c
+
+-- | Helper function for fromStageToStage
+fromStageWith :: StageIdentifier -> Var -> [Pred]
+fromStageWith (_,stagePred,posToken) v =
+    [stagePred, posToken [v]]
+
+-- | Helper function for fromStageToStage
+toStageWith :: StageIdentifier -> Var -> [Pred]
+toStageWith (preToken,stagePred,_) v =
+    [preToken [v], stagePred]
 
 --TODO Name should probably be auto-generated
 -- | Creates a transition between stages.
@@ -311,6 +303,27 @@ transition n (Implication ls rs) = do
 	where
 		qui :: Pred
 		qui = Pred "qui" []
+
+-- Generates the stage for draws
+initDrawStage :: M StageIdentifier
+initDrawStage = do
+  player <- gets playerType
+  varPlayer <- newBinding player
+  draw <- newEmptyPred "draw"
+
+  drawStage <- stage "draw" False [[] -* [draw]] varPlayer
+  modify (\st -> st {drawStage = drawStage})
+  return drawStage
+
+
+fstOf3 :: (a,b,c) -> a
+fstOf3 (a,_,_) = a
+sndOf3 :: (a,b,c) -> b
+sndOf3 (_,b,_) = b
+trdOf3 :: (a,b,c) -> c
+trdOf3 (_,_,c) = c
+
+
 
 -- | Creates the stage which handles giving the next player a token
 nextPlayerStage :: ([Var] -> Pred) -> M StageIdentifier
@@ -338,9 +351,7 @@ nextPlayerStage opp = do
 
     return res
 
--- | Takes a Constructor and applied it to a list of Vars, and return an AppliedVar
-applyVar :: Constructor -> [Var] -> Var
-applyVar c vs = AVar c vs
+--
 
 -- | Applies a constructor to a Var n times,
   -- useful for recursive constructors such as suc
@@ -355,6 +366,7 @@ applyVarTimes s x i = s [(applyVarTimes s x (i-1))]
     return appliedVar
 
 
+-- * Initial values
 
 -- |Sets the initial stage that given player starts in
 initialStageAndPlayer :: StageIdentifier -> Var -> M ()
@@ -362,9 +374,7 @@ initialStageAndPlayer (pretoken,StagePred n ,_) startingPlayer = do
     modify (\st -> st { initStage = Just n})
     let a = pretoken [startingPlayer]
     addPredToInit a
-initialStageAndPlayer _ _ = error "Invaldig StageIdentifier"
-
--- * Initial values
+initialStageAndPlayer _ _ = error "Invalid StageIdentifier"
 
 -- | Each Pred in the list needs to be applied,
   -- since they need to actually have a value.
@@ -382,17 +392,9 @@ addToInitialBoard p = case p of
         modify $ \st -> st {initialBoard = updatedBoard}
     _ -> error "Can't add non-tile Pred to InitialBoard"
 
-
-infix 4 -* -- Lower presedence than ++
-
--- | Linear Implication (called lollipop)
-  -- Removes the left hand side and gives the right hand side
-(-*) :: [Pred] -> [Pred] -> Implication
-ps1 -* ps2 = Implication ps1 ps2
-
 -- * Initalize helper functions in Ceptre
 
--- | Initializes the natural numbers, successor and zero constructors. 
+-- | Initializes the natural numbers, successor and zero constructors.
 initNats :: M ()
 initNats = do
     nat <- newType "nat"
@@ -448,7 +450,7 @@ initEQ = do
     --emitFact $ (eq [n, m]) --> (eq [np1,mp1])
     return eq
 
--- | Initializes the EQ operator for coordinates 
+-- | Initializes the EQ operator for coordinates
 initCoordEQ :: M ([Var] -> Pred)
 initCoordEQ = do
     -- eq <-initEQ
@@ -580,7 +582,7 @@ numberType = fstOf3 . nats
 
 
 -- TODO Typecheck the columnnames, right amount of arguments etc
--- | Outputs names of the variables during runtime 
+-- | Outputs names of the variables during runtime
 outputNames :: ([Var] -> Pred) -> [Name] -> M ()
 outputNames fp names = do
     let ApplyPred p _ = fp []
