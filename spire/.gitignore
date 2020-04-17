@@ -1,11 +1,12 @@
-
 # Generated ceptre files
 *.cep
 trace.dot
 log.txt
 
 
+
 # Haskell
+*~
 dist
 dist-*
 cabal-dev

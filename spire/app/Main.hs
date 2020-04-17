@@ -3,7 +3,7 @@ import Game
 import Data.List
 
 main :: IO ()
-main = runGame othello "game.cep"
+main = run chess
 
 run :: M () -> IO ()
 run g = runGame g "game.cep"

@@ -34,7 +34,7 @@ type StageIdentifier = (([Var] -> Pred),Pred,([Var] -> Pred))
 data Game = Stage Name [Implication] IsInteractive -- "stage " ++ Stagepred ++ ...
           | Transition Name Implication
           deriving (Show)
-     -- | Context Name [Pred] -- Not really needed, since they can only be used in init
+     --  Context Name [Pred] -- Not really needed, since they can only be used in init
 
 type IsInteractive = Bool
 

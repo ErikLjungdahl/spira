@@ -65,7 +65,7 @@ initDrawStage = do
     modify (\st -> st {drawStage = drawStage})
     return drawStage
 
--- Creates a Fact Pred
+-- | Creates a Fact constructor
 newFactConstructor :: String -> [Type] -> M ([Var] -> Pred)
 newFactConstructor s tx = do
     let p = Bwd s tx
