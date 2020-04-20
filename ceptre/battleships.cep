@@ -6,7 +6,7 @@
 
 % Could probably ignore ship geometry past setup phase...
 % as long as they're setup as proper ships, it doesn't really matter.
-% But maybe want to preserve geometry just because geometry.
+% But want to preserve geometry.
 
 % Nats
 nat     : type.
@@ -55,18 +55,19 @@ win         player : pred.
 % Sinking a boat
 sunk player boat : bwd.
 sunk/Z : sunk P nil.            % The empty boat is sunk
-sunk/S : sunk P (cons X Y Bs)   % Sink one piece, and the rest of it.
+sunk/S : sunk P (cons X Y Bs)   % Sink one piece, and the rest of it (if hit).
        <- hit P X Y
        <- sunk P Bs.
 
 % Guess on 'player' 'x' 'y' given 'boat'
 % Was the boat hit?
+% The boat was hit if the guess was on the same square as any of the boat pieces.
 was/hit player nat nat boat : bwd.
 was/hit/R  : was/hit  P X Y (cons X' Y' Bs)   % Recursive case
              <- was/hit P X Y Bs.
 was/hit/W  : was/hit P X Y (cons X Y Bs).     % Found witness
 
-% Stage initialization based on max.
+% Stage initialization based on "max" value.
 % Basically a nested loop over X and then over Y.
 % For i=0 to X:
 %   put token: gen i Y
@@ -107,10 +108,8 @@ init_to_setup
 
 % Game setup, players concurrently place their boats.
 % Consume 'open' to ensure boats do not overlap.
-% This could possibly be done with some rollback approach instead.
-% Note: lots of repeated code. Could this be done with functions/vectors
-% instead somehow? Like choose 1-n and choose horizontal/vertical
-% and create some 'object' with that choice that can be used.
+% This could possibly be done with some "rollback" approach instead.
+% Note: lots of repeated code. Could this be done with functions/vectors instead somehow?
 stage setup = {
 fill/Z
     : token/boat P z
@@ -157,12 +156,12 @@ setup_to_game
     -o stage game.
 
 % Main game, simply make a guess.
-% Note "free" is not consumed
+% Note: we consume "free" so we can't guess on this position again.
 stage game = {
 do/guess
     : turn P
     * opp P P'
-    * free P' X Y % $
+    * free P' X Y
     -o guess P' X Y
     * token/turn P'.
 }
@@ -186,12 +185,11 @@ sink
     -o ().
 }
 
-% If the guess was not consumed to hit, it was a miss.
 checks_to_boat_stage
     : qui * stage check_stage
     -o stage boat_stage.
 
-% Check that both players have a boat.
+% Check that both players have at least one boat.
 % (negation for win condition: "if !boat, then win opp")
 stage boat_stage = {
 check/boat
@@ -205,7 +203,8 @@ cleanup
 }
 
 % A 'maybe/boat' token was not consumed,
-% so that player didn't have a boat. (qui)
+% so that player didn't have a boat.
+% This works because of "qui", introduced at run-time when no more rules can fire.
 no_boat
     : qui * stage boat_stage
     * maybe/boat P
