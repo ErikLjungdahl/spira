@@ -78,5 +78,5 @@ check/exist/bwd
     -o is/exist.
 }
 #interactive main.
-            % Do this     on      [yello, red]
+            % Do this     on      [yellow, red]
 #trace _ main {ask/exist, check (cons yellow (cons red nil))}.
