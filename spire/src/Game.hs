@@ -228,8 +228,8 @@ ps1 -* ps2 = Implication ps1 ps2
 
 -- | Creates a stage, returns a StageIdentifier which can be used to create
 --      transition between stages with e.g. `fromStageToStage`
-stage :: Name -> IsInteractive -> [Implication] -> Var -> M StageIdentifier
-stage n isInteractive impls playerVar= do
+stage :: Name -> IsInteractive -> Var -> [Implication] -> M StageIdentifier
+stage n isInteractive playerVar impls = do
     player <- gets playerType
     preToken <- if isInteractive
         then newPred ("pretoken_" ++ n)[player]
@@ -311,7 +311,7 @@ initDrawStage = do
   varPlayer <- newBinding player
   draw <- newEmptyPred "draw"
 
-  drawStage <- stage "draw" False [[] -* [draw]] varPlayer
+  drawStage <- stage "draw" False varPlayer [[] -* [draw]]
   modify (\st -> st {drawStage = drawStage})
   return drawStage
 

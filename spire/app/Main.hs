@@ -28,11 +28,11 @@ ticTacToe = do
     pos <- newBinding coordType
     p <- newBinding player
     let impl = [tile [free, pos]] -* [tile [pp [p],pos]]
-    stage_play<- stage "play" True [impl] p
+    stage_play<- stage "play" True p [impl]
 
     -- A player wins if they have 3 occupied tiles in a row/colum/diagnal
     rules <- inALine 3 (pp [p])
-    stage_win <- stage "win" False (rules) p
+    stage_win <- stage "win" False p (rules)
 
 
     stage_draw <- initDrawStage
@@ -85,11 +85,11 @@ connectFour = do
                [ tile [pp [p], coord [x,y]]
                , tile [free, coord [x,yP1]]  -- Makes the tile above free
                ]
-    stage_play<- stage "play" True [impl] p
+    stage_play<- stage "play" True p [impl]
 
     -- A player wins if they have 4 occupied tiles in a row/colum/diagnal
     rules  <- inALine 4 (pp [p])
-    stage_win <- stage "win" False (rules) p
+    stage_win <- stage "win" False p (rules)
 
     -- After play we check win condition
     stage_play `fromStageToStage` stage_win
@@ -154,7 +154,7 @@ chess = do
              ) cds
         ) coordinates
     let impls = map horseImpl appliedBindings
-    stage_play <- stage "play" True impls p
+    stage_play <- stage "play" True p impls
 
 
     -- After play we check win condition
@@ -238,7 +238,7 @@ othello = do
         ) coordinates
 
     let impls_play = map place (allPossiblePositions)
-    stage_play <- stage "play" True impls_play p
+    stage_play <- stage "play" True p impls_play
 
 
     let flip' (startPos:pos) =
@@ -260,30 +260,32 @@ othello = do
                 ) middlePositions
 
     let impls_flip = map flip' allPossiblePositions
-    stage_flip <- stage "flip" False impls_flip p
+    stage_flip <- stage "flip" False p impls_flip
 
 
-    stage_remove <- stage "remove_last_player" False [ [lastPlaced [pp [p], coord [x,y]]] -* [] ] p
+    stage_remove <- stage "remove_last_player" False p [ [lastPlaced [pp [p], coord [x,y]]] -* [] ]
 
     points <- newPred "points" [player, nat]
 
     whatever <- newBinding coordType
     whoever <- newBinding player
     xp1 <- x<+1
-    stage_count <- stage "count_tiles" False [ [ tile [pp [p], whatever]
-                                               , points [p, x]
-                                               ] -*
-                                               [ points [p, xp1] ]
-                                             ]  whoever -- p and p2 don't have to match
+    stage_count <- stage "count_tiles" False whoever -- p and p2 don't have to match
+        [ [ tile [pp [p], whatever]
+          , points [p, x]
+          ] -*
+          [ points [p, xp1] ]
+        ]
 
     lt <- initLT
     win <- newPred "win" [player]
-    stage_winner <- stage "winner" False [ [ points [p, x]
-                                            , points [p2, y]
-                                            , lt [x, y]
-                                            ] -*
-                                            [ win [p2]]
-                                          ] whoever
+    stage_winner <- stage "winner" False whoever
+        [ [ points [p, x]
+          , points [p2, y]
+          , lt [x, y]
+          ] -*
+          [ win [p2]]
+        ]
     stage_draw <- initDrawStage
 
     stage_play `fromStageToStage` stage_flip
