@@ -1,7 +1,6 @@
 % Tic-tac-toe, using nats & 'draw on stalemate'
 % Comments:
-% Diagonals could be done using the specific values,
-% instead of general form.
+% Diagonals could be done using the specific values, instead of general form.
 
 % Natural numbers
 nat     : type.
@@ -12,9 +11,9 @@ s   nat : nat.
 draw            : pred.
 player          : type.
 turn    player  : pred.
-token   player  : pred.
+token   player  : pred.        % Token means this player will have the next turn.
 win     player  : pred.
-opp     player  player  : bwd. % Typ som ett pred
+opp     player  player  : bwd. % Backwards chaining predicate.
 
 % Square/board representation
 free            nat nat : pred.
@@ -27,7 +26,7 @@ play
     * opp A B
     * free X Y
     -o occupied A X Y 
-    * token B.           % Token means this player will have a turn
+    * token B.           % Token means this player will have the next turn.
 }
 #interactive play.
 %% play player _ row col
@@ -39,6 +38,7 @@ go/win
     -o stage win.
 
 % 'turn' is still available, so there was no free square and it's a draw.
+% (this is essentially for checking "no free square)
 % win conditions have already been checked after the last turn.
 go/draw
     : qui * stage play
@@ -116,8 +116,8 @@ context init =
 
 
 
-
-% alternative diagonal rules
+% Alternative diagonal rules.
+% Hard coded, but possible option when generating code.
 %win/diagonal/up
 %    : token B
 %    * occupied A z z
