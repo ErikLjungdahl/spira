@@ -5,24 +5,24 @@ nat     : type.
 z       : nat.
 s   nat : nat.
 
-pair nat nat : pred.
-result nat : pred.
+pair    nat nat : pred.     % Input.
+result  nat     : pred.     % Output.
 
-add nat nat nat : bwd.
+add nat nat nat : bwd.      % add x y z means x+y=z
 addZ : add X z X.           % x+0 = 0
 addS : add X (s Y) (s Z)    % x+(y+1) = z+1
     <- add X Y Z.           % if x+y = z
 
 stage go = {
 do/add
-    : pair X Y
-    * add X Y Z
-    -o result Z.
+    : pair X Y      % Input X Y
+    * add X Y Z     % if X+Y=Z
+    -o result Z.    % result is Z
 } #interactive go.
 
 
 % Initial context
 context init =
-{pair (s (s (s z))) (s (s z))}
+{pair (s (s (s z))) (s (s z))}  % Request addition of 3 and 2.
 
 #trace _ go {init}.
