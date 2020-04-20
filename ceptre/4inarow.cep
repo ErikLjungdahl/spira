@@ -1,9 +1,8 @@
 % 4 in a row
-% TODO: generalize win condition? (i.e. win row 5)
 % Comparison to tictactoe:
 % Almost the same
 % Play only allows to play in the bottom most available spot
-% This meant changes in semantics of "free square" (now current nat nat)
+% This meant changes in semantics of "free square" (now "current nat nat")
 % Because of the max height, we need comparison of nats
 % Win conditions almost exactly the same
 % Overall structure is the same
@@ -83,9 +82,9 @@ win/diagonal/down
     * occupied A (s (s X)) (s Y)
     * occupied A (s (s (s X))) Y
     -o win A.
-check/draw
+check/draw              % If this rule fires, we keep playing.
     : not_full_yet
-    * current X Y
+    * current X Y       % Consume and replace by "restore" to progress the program
     * $max M            % New from tictactoe
     * less Y M
     -o restore X Y.
@@ -95,7 +94,7 @@ check/draw
 go/play
     : qui * stage win 
     * token A * opp A B
-    * restore X Y
+    * restore X Y               
     -o stage play * turn A 
     * current X Y * not_full_yet.
 
