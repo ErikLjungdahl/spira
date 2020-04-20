@@ -1,52 +1,60 @@
-% colors
+% Example of List of colors in Ceptre.
+% Backward chaining "for all" and "exists"
+% and a second version of "exists" with forward chaining.
+
+% color type.
 color   : type.
 yellow  : color.
 red     : color.
-isyellow color  : bwd.
-isyellow  yellow.
-notyellow color : bwd. % Find a way to not need this? TODO
+isyellow  color  : bwd.  % Should be able to just use "yellow" and "red",
+isyellow  yellow.        % but this is more generalized, since we could just use
+notyellow color : bwd.   % any predicates we want to check instead.
 notyellow red.
-%colorEq : bwd.
-%colorEq : C C. % TODO
 
-is/all      : pred.
-is/exist    : pred.
+% Input.
 ask/all     : pred.
 ask/exist   : pred.
+
+% Output.
+is/all      : pred.
+is/exist    : pred.
 not/exist   : pred.
 
-
+% colors type, list of color
 colors              : type.
-nil                 : colors.
-cons color colors   : colors.
-colors colors       : pred.
+nil                 : colors.  % Empty list
+cons color colors   : colors.  % Recursive case
 
-% Bwd using 'and'
+% Backward chaining "for all"
+% P(cs) = ALL c:cs. isyellow(c).
+% Would be nice to also provide the predicate "isyellow".
+% Wish: P(cs, Q) = ALL c:cs. Q(c).
 allyellow colors : bwd.
-allyellowZ  : allyellow nil.
-allyellowS  : allyellow (cons C Cs)
-            <- allyellow Cs
-            <- isyellow C.
+allyellowZ  : allyellow nil.        % True for the empty list.
+allyellowS  : allyellow (cons C Cs) % True for the recursive case
+            <- allyellow Cs         % IF: true for the rest
+            <- isyellow C.          % IF: true for this element.
 
-% Bwd using 'or'
+% Backward chaining "exists"
+% P(cs) = EXIST c:cs. isyellow(c).
 existyellow colors : bwd.
-existyellowS    : existyellow (cons C Cs)
-                <- existyellow Cs.
-existyellowS2   : existyellow (cons C Cs)
-                <- isyellow C.
+existyellowS    : existyellow (cons C Cs) % True for the whole list
+                <- existyellow Cs.        % IF: true for the rest.
+                                          % OR:
+existyellowS2   : existyellow (cons C Cs) % True for the whole list
+                <- isyellow C.            % IF: true for this element.
 
 check colors : pred.
 
-% TODO: check longer colors
 stage main = {
-% For all
+% Do backward chaining "For all"
 check/all
     : check Cs
     * allyellow Cs
     * ask/all
     -o is/all.
 
-% Generative existence check
+% Do forward chaining "Exists"
 check/exist/yes
     : check (cons C Cs)
     * isyellow C
@@ -62,7 +70,7 @@ check/exist/nil
     * ask/exist
     -o not/exist.
 
-% Backwards chaining existence check
+% Do backward chaining "Exists"
 check/exist/bwd
     : check Cs
     * existyellow Cs
@@ -70,5 +78,5 @@ check/exist/bwd
     -o is/exist.
 }
 #interactive main.
-
+            % Do this     on      [yello, red]
 #trace _ main {ask/exist, check (cons yellow (cons red nil))}.
