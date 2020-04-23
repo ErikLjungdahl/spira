@@ -231,33 +231,19 @@ ps1 -* ps2 = Implication ps1 ps2
 stage :: Name -> IsInteractive -> Var -> [Implication] -> M StageIdentifier
 stage n isInteractive playerVar impls = do
     player <- gets playerType
-    preToken <- if isInteractive
-        then newPred ("pretoken_" ++ n)[player]
-        else newPred ("pretoken_" ++ n)[player]
+    preToken <- newPred ("pretoken_" ++ n)[player]
     preToken `outputNames` ["Turn"]
     posToken <- newPred ("postoken_" ++ n)[player]
 
-    let appliedPreToken =  preToken [playerVar]
-        appliedPosToken =  posToken [playerVar]
-        impls' = map (\(Implication l r) -> Implication
-                                                (appliedPreToken : l)
-                                                (appliedPosToken : r) )
-                      impls
-        s = Stage n impls' isInteractive
-    addGame s
-    let stagePred = StagePred n
-    let res = (preToken, stagePred, posToken)
+    let impls' = map (\(Implication l r) ->
+                        Implication
+                            (preToken [playerVar] : l)
+                            (posToken [playerVar] : r)
+                     )
+                     impls
 
-    -- Add draw upon failed stage
-    -- should probably be up to the user. Not all games ends in a draw when someone can't do something
-    --when isInteractive $ do
-    --    drawStage <- gets drawStage
-    --    transition (n ++ "_to_draw")
-    --               ((res `toStageWith` playerVar)
-    --               -*
-    --                (drawStage `toStageWith` playerVar))
-
-    return res
+    addGame (Stage n impls' isInteractive)
+    return (preToken, StagePred n, posToken)
 
 
 -- | Creates a transition which takes a player from one succesful stage to another stage
