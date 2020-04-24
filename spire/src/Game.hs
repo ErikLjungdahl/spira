@@ -18,8 +18,10 @@ module Game
     , emitFact
     -- * Player creation
     , players
+    , playerType
     -- * Stages and transitions
-    , (-*)
+    , (-@)
+    , Interactive (Interactive, Noninteractive)
     , stage
     , fromStageToStage
     , fromFailedStageToStage
@@ -37,8 +39,17 @@ module Game
     , initEQ
     , initCoordEQ
     , initPlayerAndPieceNotEQ
-    -- * Helper functions for the board
+    -- * The Board and its record functions
+    , initSimpleBoard
+    , Board
+    , coord_t_c
+    , free_v
+    , tile_p
+    -- ** Extended board
     , initBoard
+    , piece_t
+    , playerPiece_t_c
+    -- * Helper functions for the board
     , inALine
     , inARow
     , inAColumn
@@ -184,7 +195,7 @@ addPred :: Pred -> M ()
 addPred g = do
     modify (\st -> st { preds = g : preds st})
 
--- | Makes a predicate Persistent in the left side of linear implication (-*)
+-- | Makes a predicate Persistent in the left side of linear implication (-@)
 makePersistent ::  Pred ->  Pred
 makePersistent p = Persistent p
 
@@ -219,17 +230,25 @@ players names = do
 
 -- * Stages and transitions
 
-infix 4 -* -- Lower presedence than ++
+infix 4 -@ -- Lower presedence than ++
 
 -- | Linear Implication (called lollipop)
   -- Removes the left hand side and gives the right hand side
-(-*) :: [Pred] -> [Pred] -> Implication
-ps1 -* ps2 = Implication ps1 ps2
+(-@) :: [Pred] -> [Pred] -> Implication
+ps1 -@ ps2 = Implication ps1 ps2
+
+
+-- Added for clearer type signature
+data Interactive = Interactive
+                 | Noninteractive
+     deriving (Eq)
 
 -- | Creates a stage, returns a StageIdentifier which can be used to create
 --      transition between stages with e.g. `fromStageToStage`
-stage :: Name -> IsInteractive -> Var -> [Implication] -> M StageIdentifier
-stage n isInteractive playerVar impls = do
+stage :: Name -> Interactive -> Var -> [Implication] -> M StageIdentifier
+stage n isInteractive playerVar impls = let
+        boolInteractive = isInteractive == Interactive
+    in do
     player <- gets playerType
     preToken <- newPred ("pretoken_" ++ n)[player]
     preToken `outputNames` ["Turn"]
@@ -241,8 +260,7 @@ stage n isInteractive playerVar impls = do
                             (posToken [playerVar] : r)
                      )
                      impls
-
-    addGame (Stage n impls' isInteractive)
+    addGame (Stage n impls' boolInteractive)
     return (preToken, StagePred n, posToken)
 
 
@@ -254,7 +272,7 @@ fromStageToStage from to = do
     pVar<- newBinding p
     transition (show (sndOf3 from) ++ "_to_" ++ show (sndOf3 to))
             $ (from `fromStageWith` pVar)
-              -*
+              -@
               (to `toStageWith` pVar)
 -- | Creates a transition which takes a player from a failed stage to another stage
   -- A Failed stage being one where the player didn't have the requirements for any of the actions.
@@ -265,7 +283,7 @@ fromFailedStageToStage from to = do
     pVar<- newBinding p
     transition (show (sndOf3 from) ++ "_failed_to_" ++ show (sndOf3 to))
             $ (from `toStageWith` pVar)
-              -*
+              -@
               (to `toStageWith` pVar)
 
 -- | Helper function for fromStageToStage
@@ -297,7 +315,7 @@ initDrawStage = do
   varPlayer <- newBinding player
   draw <- newEmptyPred "draw"
 
-  drawStage <- stage "draw" False varPlayer [[] -* [draw]]
+  drawStage <- stage "draw" Noninteractive varPlayer [[] -@ [draw]]
   modify (\st -> st {drawStage = drawStage})
   return drawStage
 
@@ -460,7 +478,8 @@ initPlayerAndPieceNotEQ opp = do
     player <- gets playerType
     board <- gets board
     let piece = piece_t board
-    let (playerPieceType, pnp, free) = playerPiece_t_c_free board
+    let (playerPieceType, pnp) = playerPiece_t_c board
+        free = free_v board
 
     pnp_neq <- newFactConstructor "pnp_neq" [playerPieceType, playerPieceType]
 
@@ -477,36 +496,57 @@ initPlayerAndPieceNotEQ opp = do
     return pnp_neq
 
 
--- | Initializes the board
+-- | Initializes the board, with the tiles containing a player and piece
   -- Sets all tiles to free. To add a playerPiece to the initialBoard, use @addToInitialBoard
 initBoard :: Int -> Int -> M Board
 initBoard cols rows = do
-    playertype <- gets playerType
+    playerType <- gets playerType
+
     pieceType <- newType "piece"
+    playerPieceType <- newType "playerPieceType"
+    -- Player and piece. e.g. Black Queen, White Rook
+    playerPiece <- newConstructor "player_piece" [playerType, pieceType] playerPieceType
+
+    b <- initBoardHelper cols rows playerPieceType
+    tile_p b `outputNames` ["player/Piece", "Col/Row"]
+
+    let b' = b { piece_t = pieceType
+               , playerPiece_t_c = (playerPieceType, playerPiece)
+               }
+    modify $ \st -> st {board = b'}
+    return b'
+
+
+-- | Initializes the board, with the tiles containing just a player.
+  -- Sets all tiles to free. To add a playerPiece to the initialBoard, use @addToInitialBoard
+initSimpleBoard :: Int -> Int -> M Board
+initSimpleBoard cols rows = do
+    playerType <- gets playerType
+
+    b <- initBoardHelper cols rows playerType
+    tile_p b `outputNames` ["player", "Col/Row"]
+
+    modify $ \st -> st {board = b}
+    return b
+
+
+initBoardHelper :: Int -> Int -> Type -> M Board
+initBoardHelper cols rows playerPieceType = do
+    playertype <- gets playerType
 
     ( nat,s,z) <- gets nats
     coordType <- newType "coordType"
     coord <- newConstructor "coord" [nat,nat] coordType
 
-    playerPieceType <- newType "playerPieceType"
-    -- Player and piece. e.g. Black Queen, White Rook
-    playerPiece <- newConstructor "player_piece" [playertype, pieceType] playerPieceType
-    -- Player only. e.g. Alice, Bob
-    player      <- newConstructor "player_ppt"       [playertype] playerPieceType
     -- Free (tile)
     free <- newEmptyConstructor "free" playerPieceType
 
     tile <- newPred "tile" [playerPieceType, coordType]
-    tile `outputNames` ["player/Piece", "Col/Row"]
     let b = Board
             { coord_t_c  = (coordType, coord)
-            , piece_t = pieceType
-            , playerPiece_t_c_free = (playerPieceType, playerPiece, free)
-            , player_t_c_free = (playerPieceType, player, free)
+            , free_v = free
             , tile_p = tile
             }
-
-    modify $ \st -> st {board = b}
 
     mapM_ (\c ->
             addToInitialBoard $

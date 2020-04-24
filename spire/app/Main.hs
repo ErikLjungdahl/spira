@@ -3,19 +3,17 @@ import Game
 import Data.List
 
 main :: IO ()
-main = run chess
+main = run connectFour
 
 run :: M () -> IO ()
 run g = runGame g "game.cep"
 
 ticTacToe :: M ()
 ticTacToe = do
-    board <- initBoard 3 3
+    board <- initSimpleBoard 3 3
     let (coordType, coord) = coord_t_c board
-    let pieceType = piece_t board
-    let (playerPieceType, pp, free) = player_t_c_free board
+    let free = free_v board
     let tile = tile_p board
-    tile `outputNames` ["Player","Row/Col"]
 
     nat <- gets numberType
     player <- gets playerType
@@ -23,16 +21,14 @@ ticTacToe = do
     (playernames, stage_next_player, opp) <- players ["oskar","xena"]
 
     -- Pick a free tile and make it occupied by the player
-    x <- newBinding nat
-    y <- newBinding nat
     pos <- newBinding coordType
     p <- newBinding player
-    let impl = [tile [free, pos]] -* [tile [pp [p],pos]]
-    stage_play<- stage "play" True p [impl]
+    let impl = [tile [free, pos]] -@ [tile [p,pos]]
+    stage_play<- stage "play" Interactive p [impl]
 
     -- A player wins if they have 3 occupied tiles in a row/colum/diagnal
-    rules <- inALine 3 (pp [p])
-    stage_win <- stage "win" False p (rules)
+    rules <- inALine 3 (p)
+    stage_win <- stage "win" Noninteractive p (rules)
 
 
     stage_draw <- initDrawStage
@@ -61,10 +57,9 @@ connectFour = do
     (playernames, stage_next_player, opp) <- players ["xor","oskar"]
 
 
-    board <- initBoard 7 1
+    board <- initSimpleBoard 7 1
     let (coordType, coord) = coord_t_c board
-    let pieceType = piece_t board
-    let (playerPieceType, pp, free) = player_t_c_free board
+    let free = free_v board
     let tile = tile_p board
 
     lt <- initLT
@@ -81,15 +76,15 @@ connectFour = do
     let impl = [ tile [free, coord [x,y]]
                , maxFact [m]
                , lt [y, m]
-               ] -*
-               [ tile [pp [p], coord [x,y]]
+               ] -@
+               [ tile [p, coord [x,y]]
                , tile [free, coord [x,yP1]]  -- Makes the tile above free
                ]
-    stage_play<- stage "play" True p [impl]
+    stage_play<- stage "play" Interactive p [impl]
 
     -- A player wins if they have 4 occupied tiles in a row/colum/diagnal
-    rules  <- inALine 4 (pp [p])
-    stage_win <- stage "win" False p (rules)
+    rules  <- inALine 4 (p)
+    stage_win <- stage "win" Noninteractive p (rules)
 
     -- After play we check win condition
     stage_play `fromStageToStage` stage_win
@@ -108,9 +103,9 @@ chess = do
     board <- initBoard 8 8
     let (coordType, coord) = coord_t_c board
     let piece = piece_t board
-    let (playerPieceType, pnp, free) = playerPiece_t_c_free board
+    let (playerPieceType, pnp) = playerPiece_t_c board
+    let free = free_v board
     let tile = tile_p board
-    --tile `outputNames` ["Player","Col/Row"]
 
 
     horse <- newEmptyConstructor "horse" piece
@@ -129,7 +124,7 @@ chess = do
                 [ pnp_neq [pnp [p,horse], whatever]
                 , tile [pnp [p ,horse], posB]
                 , tile [whatever, posA]
-                ] -*
+                ] -@
                 [ tile [pnp [p,horse], posA]
                 , tile [free, posB]
                 ]
@@ -154,7 +149,7 @@ chess = do
              ) cds
         ) coordinates
     let impls = map horseImpl appliedBindings
-    stage_play <- stage "play" True p impls
+    stage_play <- stage "play" Interactive p impls
 
 
     -- After play we check win condition
@@ -174,15 +169,14 @@ othello = do
     (playernames, stage_next_player, opp) <- players ["black","white"]
     -- opp `outputNames` ["_","Opponent"]
 
-    board <- initBoard 8 8
+    board <- initSimpleBoard 8 8
     let (coordType, coord) = coord_t_c board
-    let pieceType = piece_t board
-    let (playerPieceType, pp, free) = player_t_c_free board
+    let free = free_v board
     let tile = tile_p board
 
     coord_eq <- initCoordEQ
 
-    lastPlaced <- newPred "lastPlaced" [playerPieceType, coordType]
+    lastPlaced <- newPred "lastPlaced" [player, coordType]
 
     let black = head playernames
     let white = last playernames
@@ -202,14 +196,14 @@ othello = do
                 ]
                 ++
                 map (\middlePos ->
-                   makePersistent (tile [pp [p2], middlePos])
+                   makePersistent (tile [p2, middlePos])
                     ) middlePositions
                 ++
-                [ makePersistent $ tile [pp [p], endPos]
+                [ makePersistent $ tile [p, endPos]
                 , coord_eq [startPos, output] -- For output
-                ] -*
-                [ tile       [pp [p], startPos]
-                , lastPlaced [pp [p], startPos]
+                ] -@
+                [ tile       [p, startPos]
+                , lastPlaced [p, startPos]
                 ]
     let coordinates = half ++ map reverse half
             where half = concat
@@ -238,7 +232,7 @@ othello = do
         ) coordinates
 
     let impls_play = map place (allPossiblePositions)
-    stage_play <- stage "play" True p impls_play
+    stage_play <- stage "play" Interactive p impls_play
 
 
     let flip' (startPos:pos) =
@@ -246,44 +240,44 @@ othello = do
              endPos = last pos
              in
                 [                  opp        [p, p2]
-                , makePersistent $ lastPlaced [pp [p ], startPos ]
+                , makePersistent $ lastPlaced [p, startPos ]
                 ]
                 ++
                 map (\middlePos ->
-                                   tile       [pp [p2], middlePos]
+                                   tile       [p2, middlePos]
                     ) middlePositions
                 ++
-                [ makePersistent $ tile       [pp [p ], endPos ]
-                ] -*
+                [ makePersistent $ tile       [p, endPos ]
+                ] -@
                 map (\middlePos ->
-                                   tile       [pp [p], middlePos]
+                                   tile       [p, middlePos]
                 ) middlePositions
 
     let impls_flip = map flip' allPossiblePositions
-    stage_flip <- stage "flip" False p impls_flip
+    stage_flip <- stage "flip" Noninteractive p impls_flip
 
 
-    stage_remove <- stage "remove_last_player" False p [ [lastPlaced [pp [p], coord [x,y]]] -* [] ]
+    stage_remove <- stage "remove_last_player" Noninteractive p [ [lastPlaced [p, coord [x,y]]] -@ [] ]
 
     points <- newPred "points" [player, nat]
 
     whatever <- newBinding coordType
     whoever <- newBinding player
     xp1 <- x<+1
-    stage_count <- stage "count_tiles" False whoever -- p and p2 don't have to match
-        [ [ tile [pp [p], whatever]
+    stage_count <- stage "count_tiles" Noninteractive whoever -- p and p2 don't have to match
+        [ [ tile [p, whatever]
           , points [p, x]
-          ] -*
+          ] -@
           [ points [p, xp1] ]
         ]
 
     lt <- initLT
     win <- newPred "win" [player]
-    stage_winner <- stage "winner" False whoever
+    stage_winner <- stage "winner" Noninteractive whoever
         [ [ points [p, x]
           , points [p2, y]
           , lt [x, y]
-          ] -*
+          ] -@
           [ win [p2]]
         ]
     stage_draw <- initDrawStage
@@ -301,10 +295,10 @@ othello = do
 
     three <- zero <+ 3
     four <- zero <+ 4
-    mapM addToInitialBoard [(tile [ pp [black], coord [three,four ] ])
-                           ,(tile [ pp [black], coord [four ,three] ])
-                           ,(tile [ pp [white], coord [three,three] ])
-                           ,(tile [ pp [white], coord [four ,four ] ])
+    mapM addToInitialBoard [(tile [ black, coord [three,four ] ])
+                           ,(tile [ black, coord [four ,three] ])
+                           ,(tile [ white, coord [three,three] ])
+                           ,(tile [ white, coord [four ,four ] ])
                            ]
     mapM_ (\player -> addPredToInit (points [player, zero])) playernames
 

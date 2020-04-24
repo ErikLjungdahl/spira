@@ -21,10 +21,10 @@ data St = St
 
 data Board = Board
     { coord_t_c  :: (Type, Const)
-    , piece_t :: Type
-    , playerPiece_t_c_free :: (Type, Const, Var)
-    , player_t_c_free :: (Type, Const, Var)
+    , free_v :: Var
     , tile_p :: ([Var] -> Pred)
+    , piece_t :: Type
+    , playerPiece_t_c :: (Type, Const)
     }
 
 type Const = [Var] -> Var
