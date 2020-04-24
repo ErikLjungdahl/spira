@@ -23,17 +23,51 @@ dependencies:
 - base >= 4.7 && < 5
 - containers >= 0.6.2.1
 - mtl >= 2.2.2
-- split 
+- split
 
 
 library:
   source-dirs: src
 
 executables:
-  spire-exe:
-    main:                Main.hs
+  tic-tac-toe-exe:
+    main:                 TicTacToe.hs
+    source-dirs:          app
+    ghc-options:
+    - -main-is            TicTacToe
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - spire
+
+  connect-four-exe:
+    main:                ConnectFour.hs
     source-dirs:         app
     ghc-options:
+    - -main-is           ConnectFour
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - spire
+
+  chess-exe:
+    main:                 Chess.hs
+    source-dirs:          app
+    ghc-options:
+    - -main-is            Chess
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - spire
+
+  othello-exe:
+    main:                 Othello.hs
+    source-dirs:          app
+    ghc-options:
+    - -main-is            Othello
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N

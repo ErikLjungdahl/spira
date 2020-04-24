@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2388e26d96eb87de5c6f2cce19408b57e422fa27d8c3caf8d330a9c2b7f47859
+-- hash: a67b1a5d63fee338fb66c1b634e038e57fa15f243966de464d61ef1b6b2f77f1
 
 name:           spire
 version:        0.1.0.0
@@ -41,13 +41,70 @@ library
     , split
   default-language: Haskell2010
 
-executable spire-exe
-  main-is: Main.hs
+executable chess-exe
+  main-is: Chess.hs
   other-modules:
+      ConnectFour
+      Othello
+      TicTacToe
       Paths_spire
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -main-is            Chess -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , containers >=0.6.2.1
+    , mtl >=2.2.2
+    , spire
+    , split
+  default-language: Haskell2010
+
+executable connect-four-exe
+  main-is: ConnectFour.hs
+  other-modules:
+      Chess
+      Othello
+      TicTacToe
+      Paths_spire
+  hs-source-dirs:
+      app
+  ghc-options: -main-is           ConnectFour -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , containers >=0.6.2.1
+    , mtl >=2.2.2
+    , spire
+    , split
+  default-language: Haskell2010
+
+executable othello-exe
+  main-is: Othello.hs
+  other-modules:
+      Chess
+      ConnectFour
+      TicTacToe
+      Paths_spire
+  hs-source-dirs:
+      app
+  ghc-options: -main-is            Othello -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , containers >=0.6.2.1
+    , mtl >=2.2.2
+    , spire
+    , split
+  default-language: Haskell2010
+
+executable tic-tac-toe-exe
+  main-is: TicTacToe.hs
+  other-modules:
+      Chess
+      ConnectFour
+      Othello
+      Paths_spire
+  hs-source-dirs:
+      app
+  ghc-options: -main-is            TicTacToe -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers >=0.6.2.1
