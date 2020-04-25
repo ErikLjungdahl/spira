@@ -169,18 +169,18 @@ def line_to_coord(line, dic):
 		line = line.split(" ")[1:] #Removes the blank spot at start
 		key = line[0]
 		if isCoordinates(line) :
-			if key == "free":
-				player = key
-			elif not line[1] == "free":
-				player = line[2]
-			else :
-				player = line[1]
+			player = line[1]
+			#if key == "free":
+			#	player = key
+			#elif not line[1] == "free":
+			#	player = line[1]
+			#else :
+			#	player = line[1]
 			xPos, yPos = int(line[-2]), int(line[-1])
 			if player in positions:
 				positions[player].append( (xPos,yPos) )
 			else:
 				positions[player] = [(xPos,yPos)]
-	
 	return positions
 
 
