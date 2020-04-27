@@ -1,5 +1,5 @@
 module Othello where
-    
+
 import Game
 
 import Data.List
@@ -19,6 +19,7 @@ othello = do
     let (coordType, coord) = coord_t_c board
     let free = free_v board
     let tile = tile_p board
+    tile `outputNames` ["Turn","_/_"]
 
     coord_eq <- initCoordEQ
 
