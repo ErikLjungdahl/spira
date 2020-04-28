@@ -29,7 +29,7 @@ module Game
     , initDrawStage
     -- * Initial values
     , initialStageAndPlayer
-    , addAppliedPredsToInit
+    , addPredsToInit
     , addPredToInit
     , addToInitialBoard
     -- * Initalize helper functions in Ceptre
@@ -123,7 +123,7 @@ newType t = do
     return ty
 
 --TODO check that Constructor doesn't already exist
--- | Creates a Constructor which can be used in `applyVar` to create an instance of it.
+-- | Creates a Constructor once applies can be used in predicates
 newConstructor :: Name -> [Type] -> Type -> M Const
 newConstructor s xt t = do
     let c = Constructor s xt t
@@ -152,7 +152,7 @@ newEmptyPred s = do
     return $ p []
 
 -- | Creates a Fact constructor
-newFactConstructor :: String -> [Type] -> M ([Var] -> Pred)
+newFactConstructor :: Name -> [Type] -> M ([Var] -> Pred)
 newFactConstructor s tx = do
     let p = Bwd s tx
     addPred p
@@ -382,8 +382,8 @@ initialStageAndPlayer _ _ = error "Invalid StageIdentifier"
 
 -- | Each Pred in the list needs to be applied,
   -- since they need to actually have a value.
-addAppliedPredsToInit :: [Pred] -> M ()
-addAppliedPredsToInit = mapM_ addPredToInit
+addPredsToInit :: [Pred] -> M ()
+addPredsToInit = mapM_ addPredToInit
 
 addPredToInit :: Pred -> M ()
 addPredToInit p = modify (\st -> st {initialPreds = p : initialPreds st})
@@ -406,7 +406,7 @@ initNats = do
     s <- newConstructor "s" [nat] nat
     modify (\st -> st {nats=(nat,s,z)})
 
--- | Initializes the LT operator (less-than) (<)
+-- | Initializes the less-than-operator (<)
   -- Returns the predicate "lt" which needs to be applied to something to be used.
 initLT :: M ([Var] -> Pred)
 initLT = do
@@ -422,7 +422,7 @@ initLT = do
     emitFact $ (lt [n, m]) --> (lt [np1,mp1])
     return lt
 
--- | Initializes the LTE operator (less-than-or-equal) (<=)
+-- | Initializes the less-than-or-equal-operator (<=)
   -- Returns the predicate "lte" which needs to be applied to something to be used.
 --TODO Make helper function so this isn't a copy pasta of initLT
 initLTE :: M ([Var] -> Pred)
@@ -439,7 +439,7 @@ initLTE = do
     emitFact $ (lte [n, m]) --> (lte [np1,mp1])
     return lte
 
--- | Initializes the EQ operator (equal) (=)
+-- | Initializes the equal operator (==)
 initEQ :: M ([Var] -> Pred)
 initEQ = do
     (nat,_,_) <- gets nats
@@ -454,7 +454,25 @@ initEQ = do
     --emitFact $ (eq [n, m]) --> (eq [np1,mp1])
     return eq
 
--- | Initializes the EQ operator for coordinates
+-- | Initializes the not equal operator (/=)
+initNEQ :: M ([Var] -> Pred)
+initNEQ = do
+    (nat,s,z) <- gets nats
+    neq <- newFactConstructor "neq" [nat, nat]
+
+    n <- newBinding nat
+    m <- newBinding nat
+    np1 <- n<+1
+    mp1 <- m<+1
+
+    emitFact $ neq [z, np1]
+    emitFact $ neq [np1, z]
+    emitFact $ (neq [n, m]) --> (neq [np1,mp1])
+    return neq
+
+
+
+-- | Initializes the equal operator for coordinates (==)
 initCoordEQ :: M ([Var] -> Pred)
 initCoordEQ = do
     -- eq <-initEQ
@@ -472,7 +490,8 @@ initCoordEQ = do
 
     return coord_eq
 
--- | Initializes the not EQ operator for the Player and Piece Constructor that are used for the tiles of the board
+-- | Initializes the not-equal operator (/=) for the "Player and Piece Constructor"
+-- which is used for the tiles of the board
 initPlayerAndPieceNotEQ :: ([Var] -> Pred) -> M ([Var] -> Pred)
 initPlayerAndPieceNotEQ opp = do
     player <- gets playerType
