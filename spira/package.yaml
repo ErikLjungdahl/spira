@@ -32,7 +32,7 @@ library:
 executables:
   tic-tac-toe-exe:
     main:                 TicTacToe.hs
-    source-dirs:          app
+    source-dirs:          examples
     ghc-options:
     - -main-is            TicTacToe
     - -threaded
@@ -43,7 +43,7 @@ executables:
 
   connect-four-exe:
     main:                ConnectFour.hs
-    source-dirs:         app
+    source-dirs:         examples
     ghc-options:
     - -main-is           ConnectFour
     - -threaded
@@ -54,7 +54,7 @@ executables:
 
   chess-exe:
     main:                 Chess.hs
-    source-dirs:          app
+    source-dirs:          examples
     ghc-options:
     - -main-is            Chess
     - -threaded
@@ -65,7 +65,7 @@ executables:
 
   othello-exe:
     main:                 Othello.hs
-    source-dirs:          app
+    source-dirs:          examples
     ghc-options:
     - -main-is            Othello
     - -threaded

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c2ca39c3c7a0dd139cf1a8396de7128addca543d39f5eed8185a94f48cc0d834
+-- hash: 89a5fd6109dbed201d63a78963ddc880d3e76854f32bfc2f5e5d25f2d06ad8a1
 
 name:           spira
 version:        0.1.0.0
@@ -49,7 +49,7 @@ executable chess-exe
       TicTacToe
       Paths_spira
   hs-source-dirs:
-      app
+      examples
   ghc-options: -main-is            Chess -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
@@ -67,7 +67,7 @@ executable connect-four-exe
       TicTacToe
       Paths_spira
   hs-source-dirs:
-      app
+      examples
   ghc-options: -main-is           ConnectFour -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
@@ -85,7 +85,7 @@ executable othello-exe
       TicTacToe
       Paths_spira
   hs-source-dirs:
-      app
+      examples
   ghc-options: -main-is            Othello -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
@@ -103,7 +103,7 @@ executable tic-tac-toe-exe
       Othello
       Paths_spira
   hs-source-dirs:
-      app
+      examples
   ghc-options: -main-is            TicTacToe -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
