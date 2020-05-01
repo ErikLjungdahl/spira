@@ -2,8 +2,6 @@ module Othello where
 
 import Game
 
-import Data.List
-
 main :: IO ()
 main = runGame othello "game.cep"
 
@@ -13,7 +11,6 @@ othello = do
     (nat,suc,zero) <- gets nats
     player <- gets playerType
     (playernames, stage_next_player, opp) <- players ["black","white"]
-    -- opp `outputNames` ["_","Opponent"]
 
     board <- initSimpleBoard 8 8
     let (coordType, coord) = coord_t_c board
@@ -64,11 +61,6 @@ othello = do
                           ] | n <- [3..8]
                          ]
 
---                    [[(0,0),(1,0),(2,0)]
---                    ,[(0,0),(1,1),(2,2)]
---                    ,[(0,0),(0,1),(0,2)]
---                    ,[(2,0),(1,1),(0,2)]
---                    ]
     allPossiblePositions <-
         mapM (\positions ->
             mapM (\pos -> do

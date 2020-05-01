@@ -30,7 +30,7 @@ library:
   source-dirs: src
 
 executables:
-  tic-tac-toe-exe:
+  tic-tac-toe:
     main:                 TicTacToe.hs
     source-dirs:          examples
     ghc-options:
@@ -41,7 +41,7 @@ executables:
     dependencies:
     - spira
 
-  connect-four-exe:
+  connect-four:
     main:                ConnectFour.hs
     source-dirs:         examples
     ghc-options:
@@ -52,7 +52,7 @@ executables:
     dependencies:
     - spira
 
-  chess-exe:
+  chess-WIP:
     main:                 Chess.hs
     source-dirs:          examples
     ghc-options:
@@ -63,7 +63,7 @@ executables:
     dependencies:
     - spira
 
-  othello-exe:
+  othello:
     main:                 Othello.hs
     source-dirs:          examples
     ghc-options:

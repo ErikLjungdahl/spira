@@ -1,8 +1,6 @@
 module Chess where
-    
-import Game
 
-import Data.List
+import Game
 
 main :: IO ()
 main = runGame chess "game.cep"

@@ -1,11 +1,8 @@
 module TicTacToe where
 import Game
 
-import Data.List
-
 main :: IO ()
 main = runGame ticTacToe "game.cep"
-
 
 ticTacToe :: M ()
 ticTacToe = do
@@ -17,7 +14,7 @@ ticTacToe = do
     nat <- gets numberType
     player <- gets playerType
 
-    (playernames, stage_next_player, opp) <- players ["oskar","xena"]
+    (playernames, stage_next_player, opp) <- players ["Oscar","X-ray"]
 
     -- Pick a free tile and make it occupied by the player
     pos <- newBinding coordType
@@ -43,5 +40,3 @@ ticTacToe = do
 
 
     initialStageAndPlayer stage_play (head playernames)
-
-    return ()

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 89a5fd6109dbed201d63a78963ddc880d3e76854f32bfc2f5e5d25f2d06ad8a1
+-- hash: cb5f65344a3723e1a0d00b41cf094f767cfcb24b5887205b2d27c0e1da92f9c4
 
 name:           spira
 version:        0.1.0.0
@@ -41,7 +41,7 @@ library
     , split
   default-language: Haskell2010
 
-executable chess-exe
+executable chess-WIP
   main-is: Chess.hs
   other-modules:
       ConnectFour
@@ -59,7 +59,7 @@ executable chess-exe
     , split
   default-language: Haskell2010
 
-executable connect-four-exe
+executable connect-four
   main-is: ConnectFour.hs
   other-modules:
       Chess
@@ -77,7 +77,7 @@ executable connect-four-exe
     , split
   default-language: Haskell2010
 
-executable othello-exe
+executable othello
   main-is: Othello.hs
   other-modules:
       Chess
@@ -95,7 +95,7 @@ executable othello-exe
     , split
   default-language: Haskell2010
 
-executable tic-tac-toe-exe
+executable tic-tac-toe
   main-is: TicTacToe.hs
   other-modules:
       Chess

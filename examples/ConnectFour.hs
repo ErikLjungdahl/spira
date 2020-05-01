@@ -1,8 +1,6 @@
 module ConnectFour where
-    
-import Game
 
-import Data.List
+import Game
 
 main :: IO ()
 main = runGame connectFour "game.cep"
@@ -10,8 +8,6 @@ main = runGame connectFour "game.cep"
 
 connectFour :: M ()
 connectFour = do
-    --nats
-    --players ["jennie","simon","erik","peter","nicke","oskar"]
     (nat,suc,zero) <- gets nats
     player <- gets playerType
     (playernames, stage_next_player, opp) <- players ["xor","oskar"]
