@@ -113,20 +113,31 @@ runGame g fp =
     in writeFile fp ceptreOutput
 
 -- * Constructors
+-- TODO Are there other characters allowed?
+guardIsLowerCase :: Name -> String -> M ()
+guardIsLowerCase n str = do
+    unless (head n `elem` ['a'..'z']) $
+        error $ "Invalid " ++ str ++ " name: " ++ n ++  " - Must begin with lowercase letter"
+    unless (all (`elem` ('_':['a'..'z']++['A'..'Z'])) n) $
+        error $ "Invalid " ++ str ++ " name: " ++ n ++  " - Only letters a-z and _ are accepted"
 
 --TODO check that type doesn't already exist
 -- | Creates a new type which can be used when creating predicates and Constructors
 newType :: Name -> M Type
-newType t = do
-    let ty = Type t
+newType n = do
+    guardIsLowerCase n "Type"
+
+    let ty = Type n
     modify (\st -> st { types = ty : types st})
     return ty
 
 --TODO check that Constructor doesn't already exist
 -- | Creates a Constructor once applies can be used in predicates
 newConstructor :: Name -> [Type] -> Type -> M Const
-newConstructor s xt t = do
-    let c = Constructor s xt t
+newConstructor n xt t = do
+    guardIsLowerCase n "Constructor"
+
+    let c = Constructor n xt t
     modify (\st -> st { consts = c : consts st})
     return (\vars -> AVar c vars)
 
@@ -140,8 +151,10 @@ newEmptyConstructor n t = do
 --TODO check that Pred doesn't already exist
 -- | Creates a new predicate
 newPred :: Name -> [Type] -> M ([Var] -> Pred)
-newPred s xt = do
-    let p = Pred s xt
+newPred n xt = do
+    guardIsLowerCase n "Pred"
+
+    let p = Pred n xt
     addPred p
     return $ \vars -> ApplyPred p vars
 
@@ -153,8 +166,10 @@ newEmptyPred s = do
 
 -- | Creates a Fact constructor
 newFactConstructor :: Name -> [Type] -> M ([Var] -> Pred)
-newFactConstructor s tx = do
-    let p = Bwd s tx
+newFactConstructor n tx = do
+    guardIsLowerCase n "FactConstructor"
+
+    let p = Bwd n tx
     addPred p
     return $ \vars -> ApplyPred p vars
 
@@ -249,6 +264,9 @@ stage :: Name -> Interactive -> Var -> [Implication] -> M StageIdentifier
 stage n isInteractive playerVar impls = let
         boolInteractive = isInteractive == Interactive
     in do
+    guardIsLowerCase n "Stage"
+
+
     player <- gets playerType
     preToken <- newPred ("pretoken_" ++ n)[player]
     preToken `outputNames` ["Turn"]
@@ -301,6 +319,8 @@ toStageWith (preToken,stagePred,_) v =
   -- The user Should use `fromStageToStage` or `fromFailedStageToStage`
 transition :: Name -> Implication -> M ()
 transition n (Implication ls rs) = do
+    guardIsLowerCase n "Transition"
+
     let impl = Implication (qui : ls) rs
     addGame (Transition n impl)
 
