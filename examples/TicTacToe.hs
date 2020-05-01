@@ -14,7 +14,7 @@ ticTacToe = do
     nat <- gets numberType
     player <- gets playerType
 
-    (playernames, stage_next_player, opp) <- players ["Oscar","X-ray"]
+    (playernames, stage_next_player, opp) <- players ["Oscar","Xena"]
 
     -- Pick a free tile and make it occupied by the player
     pos <- newBinding coordType
