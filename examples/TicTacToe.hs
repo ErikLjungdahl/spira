@@ -7,14 +7,13 @@ main = runGame ticTacToe "game.cep"
 ticTacToe :: M ()
 ticTacToe = do
     board <- initSimpleBoard 3 3
-    let (coordType, coord) = coord_t_c board
+    let (coordType, _) = coord_t_c board
     let free = free_v board
     let tile = tile_p board
 
-    nat <- gets numberType
     player <- gets playerType
 
-    (playernames, stage_next_player, opp) <- players ["oscar","xena"]
+    (playernames, stage_next_player, _) <- players ["oscar","xena"]
 
     -- Pick a free tile and make it occupied by the player
     pos <- newBinding coordType

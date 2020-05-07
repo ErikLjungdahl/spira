@@ -44,9 +44,6 @@ library
 executable chess-WIP
   main-is: Chess.hs
   other-modules:
-      ConnectFour
-      Othello
-      TicTacToe
       Paths_spira
   hs-source-dirs:
       examples
@@ -62,9 +59,6 @@ executable chess-WIP
 executable connect-four
   main-is: ConnectFour.hs
   other-modules:
-      Chess
-      Othello
-      TicTacToe
       Paths_spira
   hs-source-dirs:
       examples
@@ -80,9 +74,6 @@ executable connect-four
 executable othello
   main-is: Othello.hs
   other-modules:
-      Chess
-      ConnectFour
-      TicTacToe
       Paths_spira
   hs-source-dirs:
       examples
@@ -98,9 +89,6 @@ executable othello
 executable tic-tac-toe
   main-is: TicTacToe.hs
   other-modules:
-      Chess
-      ConnectFour
-      Othello
       Paths_spira
   hs-source-dirs:
       examples

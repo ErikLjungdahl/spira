@@ -8,7 +8,7 @@ main = runGame othello "game.cep"
 
 othello :: M ()
 othello = do
-    (nat,suc,zero) <- gets nats
+    (nat,_,zero) <- gets nats
     player <- gets playerType
     (playernames, stage_next_player, opp) <- players ["black","white"]
 
@@ -134,7 +134,7 @@ othello = do
 
     three <- zero <+ 3
     four <- zero <+ 4
-    mapM addToInitialBoard [(tile [ black, coord [three,four ] ])
+    mapM_ addToInitialBoard [(tile [ black, coord [three,four ] ])
                            ,(tile [ black, coord [four ,three] ])
                            ,(tile [ white, coord [three,three] ])
                            ,(tile [ white, coord [four ,four ] ])

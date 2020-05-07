@@ -8,13 +8,13 @@ main = runGame connectFour "game.cep"
 
 connectFour :: M ()
 connectFour = do
-    (nat,suc,zero) <- gets nats
+    (nat,_,zero) <- gets nats
     player <- gets playerType
-    (playernames, stage_next_player, opp) <- players ["xor","oskar"]
+    (playernames, stage_next_player, _) <- players ["xor","oskar"]
 
 
     board <- initSimpleBoard 7 1
-    let (coordType, coord) = coord_t_c board
+    let (_, coord) = coord_t_c board
     let free = free_v board
     let tile = tile_p board
 
