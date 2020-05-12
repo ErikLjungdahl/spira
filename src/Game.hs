@@ -252,6 +252,11 @@ infix 4 -@ -- Lower presedence than ++
 (-@) :: [Pred] -> [Pred] -> Implication
 ps1 -@ ps2 = Implication ps1 ps2
 
+-- | Joines the left and right hand sides, respectively.
+  -- Might be useful to combine simple implications to make more complex things
+join :: Implication -> Implication -> Implication
+join (Implication l1 r1) (Implication l2 r2) = Implication (l1 ++ l2) (r1 ++ r2)
+
 
 -- Added for clearer type signature
 data Interactive = Interactive
@@ -328,7 +333,7 @@ transition n (Implication ls rs) = do
 		qui :: Pred
 		qui = Pred "qui" []
 
--- Generates the stage for draws
+-- | Generates the stage for draws
 initDrawStage :: M StageIdentifier
 initDrawStage = do
   player <- gets playerType
