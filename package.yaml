@@ -53,7 +53,7 @@ executables:
     - spira
 
   chess-WIP:
-    main:                 Chess.hs
+    main:                 Chess_WIP.hs
     source-dirs:          examples
     ghc-options:
     - -main-is            Chess

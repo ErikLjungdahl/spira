@@ -42,7 +42,7 @@ library
   default-language: Haskell2010
 
 executable chess-WIP
-  main-is: Chess.hs
+  main-is: Chess_WIP.hs
   other-modules:
       Paths_spira
   hs-source-dirs:
