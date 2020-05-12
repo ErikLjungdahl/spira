@@ -8,7 +8,7 @@ module Game
     , newType
     , newConstructor
     , newEmptyConstructor
-    , newPred
+    , newPredConstructor
     , newEmptyPred
     , newFactConstructor
     , newBinding
@@ -100,7 +100,7 @@ compileGame g fp =
         default_config :: M ()
         default_config = do
             player <- newType "player"
-            -- turn_p <- newPred "turn" [player]
+            -- turn_p <- newPredConstructor "turn" [player]
 
             modify (\st -> st {playerType = player})
             initNats
@@ -150,8 +150,8 @@ newEmptyConstructor n t = do
 
 --TODO check that Pred doesn't already exist
 -- | Creates a new predicate
-newPred :: Name -> [Type] -> M ([Var] -> Pred)
-newPred n xt = do
+newPredConstructor :: Name -> [Type] -> M ([Var] -> Pred)
+newPredConstructor n xt = do
     guardIsLowerCase n "Pred"
 
     let p = Pred n xt
@@ -161,7 +161,7 @@ newPred n xt = do
 -- | Creates a new empty predicate
 newEmptyPred :: Name -> M Pred
 newEmptyPred s = do
-    p <- newPred s []
+    p <- newPredConstructor s []
     return $ p []
 
 -- | Creates a Fact constructor
@@ -273,9 +273,9 @@ stage n isInteractive playerVar impls = let
 
 
     player <- gets playerType
-    preToken <- newPred ("pretoken_" ++ n)[player]
+    preToken <- newPredConstructor ("pretoken_" ++ n)[player]
     preToken `outputNames` ["Turn"]
-    posToken <- newPred ("postoken_" ++ n)[player]
+    posToken <- newPredConstructor ("postoken_" ++ n)[player]
 
     let impls' = map (\(Implication l r) ->
                         Implication
@@ -360,8 +360,8 @@ nextPlayerStage opp = do
     let n = "next_player"
 
     player <- gets playerType
-    preToken <- newPred ("pretoken_" ++ n)[player]
-    posToken <- newPred ("postoken_" ++ n)[player]
+    preToken <- newPredConstructor ("pretoken_" ++ n)[player]
+    posToken <- newPredConstructor ("postoken_" ++ n)[player]
 
     prevPlayer <- newBinding player
     nextPlayer <- newBinding player
@@ -585,7 +585,7 @@ initBoardHelper cols rows playerPieceType = do
     -- Free (tile)
     free <- newEmptyConstructor "free" playerPieceType
 
-    tile <- newPred "tile" [playerPieceType, coordType]
+    tile <- newPredConstructor "tile" [playerPieceType, coordType]
     let b = Board
             { coord_t_c  = (coordType, coord)
             , free_v = free

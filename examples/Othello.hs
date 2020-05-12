@@ -20,7 +20,7 @@ othello = do
 
     coord_eq <- initCoordEQ
 
-    lastPlaced <- newPred "lastPlaced" [player, coordType]
+    lastPlaced <- newPredConstructor "lastPlaced" [player, coordType]
 
     let black = head playernames
     let white = last playernames
@@ -98,7 +98,7 @@ othello = do
 
     stage_remove <- stage "remove_last_player" Noninteractive p [ [lastPlaced [p, coord [x,y]]] -@ [] ]
 
-    points <- newPred "points" [player, nat]
+    points <- newPredConstructor "points" [player, nat]
 
     whatever <- newBinding coordType
     whoever <- newBinding player
@@ -111,7 +111,7 @@ othello = do
         ]
 
     lt <- initLT
-    win <- newPred "win" [player]
+    win <- newPredConstructor "win" [player]
     stage_winner <- stage "winner" Noninteractive whoever
         [ [ points [p, x]
           , points [p2, y]
