@@ -2,7 +2,7 @@ module TicTacToe where
 import Game
 
 main :: IO ()
-main = runGame ticTacToe "game.cep"
+main = compileGame ticTacToe "game.cep"
 
 ticTacToe :: M ()
 ticTacToe = do

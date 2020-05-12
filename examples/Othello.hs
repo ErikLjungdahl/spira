@@ -3,7 +3,7 @@ module Othello where
 import Game
 
 main :: IO ()
-main = runGame othello "game.cep"
+main = compileGame othello "game.cep"
 
 
 othello :: M ()

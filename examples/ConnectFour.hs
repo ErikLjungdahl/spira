@@ -3,7 +3,7 @@ module ConnectFour where
 import Game
 
 main :: IO ()
-main = runGame connectFour "game.cep"
+main = compileGame connectFour "game.cep"
 
 
 connectFour :: M ()

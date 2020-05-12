@@ -3,7 +3,7 @@ module Chess where
 import Game
 
 main :: IO ()
-main = runGame chess "game.cep"
+main = compileGame chess "game.cep"
 
 
 chess :: M ()

@@ -3,7 +3,7 @@
 
 --TODO Only export the functions that we want the user to be able to use.
 module Game
-    ( runGame
+    ( compileGame
     -- * Constructors
     , newType
     , newConstructor
@@ -82,8 +82,8 @@ import Data.Map.Lazy (Map)
 
 type M a = State St a
 -- | Runs the DSL and compiles it to Ceptre
-runGame :: M () -> FilePath -> IO ()
-runGame g fp =
+compileGame :: M () -> FilePath -> IO ()
+compileGame g fp =
     let ceptreOutput = compile finalSt
         (_, finalSt) = runState (default_config >> g >> boardToInit ) initSt
         initSt = St
