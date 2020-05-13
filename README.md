@@ -46,4 +46,4 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ## Trivia
 
-Spira was made as a bachelor thesis on Chalmers University of Technology in 2020
+Spira was made as a bachelor thesis on University of Gothenburg and Chalmers University of Technology in 2020
