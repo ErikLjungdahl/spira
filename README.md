@@ -11,11 +11,11 @@ We recommend putting the binary in your path
 
 ### Using Spira
 
-Spira will soon be available as a Cabal package
-```
+Spira will soon be available as a Cabal package, for now follow the instructions below
+<!-- ```
 cabal update
 cabal install spira
-```
+``` -->
 
 ### Testing Spira
 
