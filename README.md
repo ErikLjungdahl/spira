@@ -11,11 +11,11 @@ We recommend putting the binary in your path
 
 ### Using Spira
 
-Spira will soon be available as a Cabal package
-```
+Spira will soon be available as a Cabal package, for now follow the instructions below
+<!-- ```
 cabal update
 cabal install spira
-```
+``` -->
 
 ### Testing Spira
 
@@ -46,4 +46,4 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ## Trivia
 
-Spira was made as a bachelor thesis on Chalmers University of Technology in 2020
+Spira was made as a bachelor thesis on University of Gothenburg and Chalmers University of Technology in 2020
