@@ -10,10 +10,7 @@ data St = St
     , initStage :: Maybe Name
     , initialPreds :: [Pred]
     , nbrOfBindings :: Int
-    , playerType :: Type
-    , nats :: (Type,Const,Var)
     , turn :: Pred
-    , drawStage :: StageIdentifier
     , columnNames :: Map Pred [Name]
     , board :: Board
     , initialBoard :: Map Var Pred

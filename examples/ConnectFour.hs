@@ -8,8 +8,6 @@ main = compileGame connectFour "game.cep"
 
 connectFour :: M ()
 connectFour = do
-    (nat,_,zero) <- gets nats
-    player <- gets playerType
     (playernames, stage_next_player, _) <- players ["xor","oskar"]
 
 
@@ -26,7 +24,7 @@ connectFour = do
     -- Pick a free tile and make it occupied by the player
     x <- newBinding nat
     y <- newBinding nat
-    p <- newBinding player
+    p <- newBinding playerType
     m <- newBinding nat
     yP1 <- y<+1
     let impl = [ tile [free, coord [x,y]]

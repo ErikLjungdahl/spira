@@ -16,9 +16,13 @@ module Game
     -- ** Functions for Facts
     , (-->)
     , emitFact
+    -- ** Predefined types and constructors
+    , playerType
+    , nat
+    , suc
+    , zero
     -- * Player creation
     , players
-    , playerType
     -- * Stages and transitions
     , (-@)
     , Interactive (Interactive, Noninteractive)
@@ -33,7 +37,6 @@ module Game
     , addPredToInit
     , addToInitialBoard
     -- * Initalize helper functions in Ceptre
-    , initNats
     , initLT
     , initLTE
     , initEQ
@@ -58,7 +61,6 @@ module Game
     -- * UI functions
     , outputNames
     -- * utility functions
-    , numberType
     , applyVarTimes
     , (<+)
     , M
@@ -85,11 +87,11 @@ type M a = State St a
 compileGame :: M () -> FilePath -> IO ()
 compileGame g fp =
     let ceptreOutput = compile finalSt
-        (_, finalSt) = runState (default_config >> g >> boardToInit ) initSt
+        (_, finalSt) = runState (g >> boardToInit ) initSt
         initSt = St
-            { types  = []
+            { types  = [playerType, nat]
             , preds  = []
-            , consts = []
+            , consts = [sucConst,zeroConst]
             , games  = []
             , initStage = Nothing
             , initialPreds = []
@@ -97,13 +99,8 @@ compileGame g fp =
             , columnNames = Map.empty
             , initialBoard = Map.empty
             }
-        default_config :: M ()
-        default_config = do
-            player <- newType "player"
-            -- turn_p <- newPredConstructor "turn" [player]
-
-            modify (\st -> st {playerType = player})
-            initNats
+--        default_config :: M ()
+--        default_config = do
 
         boardToInit :: M ()
         boardToInit = do
@@ -214,13 +211,17 @@ addPred g = do
 makePersistent ::  Pred ->  Pred
 makePersistent p = Persistent p
 
+
+playerType :: Type
+playerType = Type "player"
+
+
 -- | Creates all the players and returns their identifiers along with a stage identifier for the next player's stage
   -- Returns the opposite players.
 players :: [String] -> M ([Var], StageIdentifier , ([Var] -> Pred))
 players names = do
-    player <- gets playerType -- newType "player"
-    opp <- newFactConstructor "opp" [player, player]
-    players <- mapM (\n -> newEmptyConstructor n player) (names)
+    opp <- newFactConstructor "opp" [playerType, playerType]
+    players <- mapM (\n -> newEmptyConstructor n playerType) (names)
     -- noone <- newEmptyConstructor "free" player
     --initiateOpponents names names opp
 
@@ -272,10 +273,9 @@ stage n isInteractive playerVar impls = let
     guardIsLowerCase n "Stage"
 
 
-    player <- gets playerType
-    preToken <- newPredConstructor ("pretoken_" ++ n)[player]
+    preToken <- newPredConstructor ("pretoken_" ++ n)[playerType]
     preToken `outputNames` ["Turn"]
-    posToken <- newPredConstructor ("postoken_" ++ n)[player]
+    posToken <- newPredConstructor ("postoken_" ++ n)[playerType]
 
     let impls' = map (\(Implication l r) ->
                         Implication
@@ -291,8 +291,7 @@ stage n isInteractive playerVar impls = let
   -- A succesful stage being one where the player performed one of the actions in a stage
 fromStageToStage :: StageIdentifier -> StageIdentifier -> M ()
 fromStageToStage from to = do
-    p <- gets playerType
-    pVar<- newBinding p
+    pVar<- newBinding playerType
     transition (show (sndOf3 from) ++ "_to_" ++ show (sndOf3 to))
             $ (from `fromStageWith` pVar)
               -@
@@ -302,8 +301,7 @@ fromStageToStage from to = do
   -- Usually used from winStage to nextPlayerStage
 fromFailedStageToStage :: StageIdentifier -> StageIdentifier -> M ()
 fromFailedStageToStage from to = do
-    p <- gets playerType
-    pVar<- newBinding p
+    pVar<- newBinding playerType
     transition (show (sndOf3 from) ++ "_failed_to_" ++ show (sndOf3 to))
             $ (from `toStageWith` pVar)
               -@
@@ -336,12 +334,10 @@ transition n (Implication ls rs) = do
 -- | Generates the stage for draws
 initDrawStage :: M StageIdentifier
 initDrawStage = do
-  player <- gets playerType
-  varPlayer <- newBinding player
+  varPlayer <- newBinding playerType
   draw <- newEmptyPred "draw"
 
   drawStage <- stage "draw" Noninteractive varPlayer [[] -@ [draw]]
-  modify (\st -> st {drawStage = drawStage})
   return drawStage
 
 
@@ -359,12 +355,11 @@ nextPlayerStage :: ([Var] -> Pred) -> M StageIdentifier
 nextPlayerStage opp = do
     let n = "next_player"
 
-    player <- gets playerType
-    preToken <- newPredConstructor ("pretoken_" ++ n)[player]
-    posToken <- newPredConstructor ("postoken_" ++ n)[player]
+    preToken <- newPredConstructor ("pretoken_" ++ n)[playerType]
+    posToken <- newPredConstructor ("postoken_" ++ n)[playerType]
 
-    prevPlayer <- newBinding player
-    nextPlayer <- newBinding player
+    prevPlayer <- newBinding playerType
+    nextPlayer <- newBinding playerType
 
     let impls = [Implication
                     [ preToken [prevPlayer]
@@ -390,8 +385,7 @@ applyVarTimes s x i = s [(applyVarTimes s x (i-1))]
 
 (<+) :: Var -> Int -> M Var
 (<+) v n = do
-    (_, s, _) <- gets nats
-    let appliedVar = applyVarTimes s v n
+    let appliedVar = applyVarTimes suc v n
     return appliedVar
 
 
@@ -423,19 +417,27 @@ addToInitialBoard p = case p of
 
 -- * Initalize helper functions in Ceptre
 
--- | Initializes the natural numbers, successor and zero constructors.
-initNats :: M ()
-initNats = do
-    nat <- newType "nat"
-    z <- newEmptyConstructor "z" nat
-    s <- newConstructor "s" [nat] nat
-    modify (\st -> st {nats=(nat,s,z)})
+--  Initializes the natural numbers, successor and zero constructors.
+
+nat :: Type
+nat = Type "nat"
+
+suc :: Const
+suc = (\vars -> AVar sucConst vars)
+
+sucConst :: Constructor
+sucConst = Constructor "s" [nat] nat
+
+zero :: Var
+zero = AVar zeroConst []
+
+zeroConst :: Constructor
+zeroConst = Constructor "z" [] nat
 
 -- | Initializes the less-than-operator (<)
   -- Returns the predicate "lt" which needs to be applied to something to be used.
 initLT :: M ([Var] -> Pred)
 initLT = do
-    (nat,_,z) <- gets nats
     lt <- newFactConstructor "lt" [nat, nat]
 
     n <- newBinding nat
@@ -443,7 +445,7 @@ initLT = do
     np1 <- n<+1
     mp1 <- m<+1
 
-    emitFact $ lt [z, np1]
+    emitFact $ lt [zero, np1]
     emitFact $ (lt [n, m]) --> (lt [np1,mp1])
     return lt
 
@@ -452,7 +454,6 @@ initLT = do
 --TODO Make helper function so this isn't a copy pasta of initLT
 initLTE :: M ([Var] -> Pred)
 initLTE = do
-    (nat,_,z) <- gets nats
     lte <- newFactConstructor "lte" [nat, nat]
 
     n <- newBinding nat
@@ -460,14 +461,13 @@ initLTE = do
     np1 <- n<+1
     mp1 <- m<+1
 
-    emitFact $ lte [z, n]
+    emitFact $ lte [zero, n]
     emitFact $ (lte [n, m]) --> (lte [np1,mp1])
     return lte
 
 -- | Initializes the equal operator (==)
 initEQ :: M ([Var] -> Pred)
 initEQ = do
-    (nat,_,_) <- gets nats
     eq <- newFactConstructor "eq" [nat, nat]
 
     n <- newBinding nat
@@ -482,7 +482,6 @@ initEQ = do
 -- | Initializes the not equal operator (/=)
 initNEQ :: M ([Var] -> Pred)
 initNEQ = do
-    (nat,s,z) <- gets nats
     neq <- newFactConstructor "neq" [nat, nat]
 
     n <- newBinding nat
@@ -490,8 +489,8 @@ initNEQ = do
     np1 <- n<+1
     mp1 <- m<+1
 
-    emitFact $ neq [z, np1]
-    emitFact $ neq [np1, z]
+    emitFact $ neq [zero, np1]
+    emitFact $ neq [np1, zero]
     emitFact $ (neq [n, m]) --> (neq [np1,mp1])
     return neq
 
@@ -501,7 +500,6 @@ initNEQ = do
 initCoordEQ :: M ([Var] -> Pred)
 initCoordEQ = do
     -- eq <-initEQ
-    (nat, _, _) <- gets nats
     board <- gets board
     let (coordType, coord) = coord_t_c board
 
@@ -519,7 +517,6 @@ initCoordEQ = do
 -- which is used for the tiles of the board
 initPlayerAndPieceNotEQ :: ([Var] -> Pred) -> M ([Var] -> Pred)
 initPlayerAndPieceNotEQ opp = do
-    player <- gets playerType
     board <- gets board
     let piece = piece_t board
     let (playerPieceType, pnp) = playerPiece_t_c board
@@ -529,8 +526,8 @@ initPlayerAndPieceNotEQ opp = do
 
     pc<- newBinding piece
     pc2<- newBinding piece
-    p <- newBinding player
-    p2 <- newBinding player
+    p <- newBinding playerType
+    p2 <- newBinding playerType
 
     emitFact $ pnp_neq [free, pnp [p, pc]]
     emitFact $ pnp_neq [pnp [p, pc], free]
@@ -544,8 +541,6 @@ initPlayerAndPieceNotEQ opp = do
   -- Sets all tiles to free. To add a playerPiece to the initialBoard, use @addToInitialBoard
 initBoard :: Int -> Int -> M Board
 initBoard cols rows = do
-    playerType <- gets playerType
-
     pieceType <- newType "piece"
     playerPieceType <- newType "playerPieceType"
     -- Player and piece. e.g. Black Queen, White Rook
@@ -565,8 +560,6 @@ initBoard cols rows = do
   -- Sets all tiles to free. To add a playerPiece to the initialBoard, use @addToInitialBoard
 initSimpleBoard :: Int -> Int -> M Board
 initSimpleBoard cols rows = do
-    playerType <- gets playerType
-
     b <- initBoardHelper cols rows playerType
     tile_p b `outputNames` ["player", "Col/Row"]
 
@@ -576,9 +569,6 @@ initSimpleBoard cols rows = do
 
 initBoardHelper :: Int -> Int -> Type -> M Board
 initBoardHelper cols rows playerPieceType = do
-    playertype <- gets playerType
-
-    ( nat,s,z) <- gets nats
     coordType <- newType "coordType"
     coord <- newConstructor "coord" [nat,nat] coordType
 
@@ -596,7 +586,7 @@ initBoardHelper cols rows playerPieceType = do
             addToInitialBoard $
                 tile [free, c]
          )
-         [coord [applyVarTimes s z x ,applyVarTimes s z y]
+         [coord [applyVarTimes suc zero x ,applyVarTimes suc zero y]
             | x <- [0..cols-1], y <- [0..rows-1] ]
 
     return b
@@ -633,8 +623,6 @@ inADiagonal n playerPiece = do
 -- | Var should be an applied Constructor of playerPieceType
 inARowColumDiagonalHelper :: Var -> [Int] -> [Int] -> M Implication
 inARowColumDiagonalHelper playerPiece cols rows = do
-    (nat, s, _) <- gets nats
-
     board <- gets board
     let (_, coord) = coord_t_c board
     let tile = tile_p board
@@ -642,13 +630,9 @@ inARowColumDiagonalHelper playerPiece cols rows = do
     x <- newBinding nat
     y <- newBinding nat
 
-    let occupied = map (\(c,r) -> tile [playerPiece, coord [applyVarTimes s x c, applyVarTimes s y r]])
+    let occupied = map (\(c,r) -> tile [playerPiece, coord [applyVarTimes suc x c, applyVarTimes suc y r]])
                        (zip cols rows)
     return $ Implication occupied []
-
--- | Gets the number type for natural number and is used instead of nats
-numberType :: St -> Type
-numberType = fstOf3 . nats
 
 
 -- TODO Typecheck the columnnames, right amount of arguments etc

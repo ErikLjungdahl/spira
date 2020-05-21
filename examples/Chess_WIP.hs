@@ -8,8 +8,6 @@ main = compileGame chess "game.cep"
 
 chess :: M ()
 chess = do
-    (nat,suc,zero) <- gets nats
-    player <- gets playerType
     (playernames, stage_next_player, opp) <- players ["hugo","musen"]
     board <- initBoard 8 8
     let (coordType, coord) = coord_t_c board
@@ -26,8 +24,8 @@ chess = do
     --let free = head playernames
     x <- newBinding nat
     y <- newBinding nat
-    p <- newBinding player
-    p2 <- newBinding player
+    p <- newBinding playerType
+    p2 <- newBinding playerType
     whatever <- newBinding playerPieceType
 
     -- Horses move.

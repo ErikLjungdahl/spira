@@ -8,8 +8,6 @@ main = compileGame othello "game.cep"
 
 othello :: M ()
 othello = do
-    (nat,_,zero) <- gets nats
-    player <- gets playerType
     (playernames, stage_next_player, opp) <- players ["black","white"]
 
     board <- initSimpleBoard 8 8
@@ -20,7 +18,7 @@ othello = do
 
     coord_eq <- initCoordEQ
 
-    lastPlaced <- newPredConstructor "lastPlaced" [player, coordType]
+    lastPlaced <- newPredConstructor "lastPlaced" [playerType, coordType]
 
     let black = head playernames
     let white = last playernames
@@ -28,8 +26,8 @@ othello = do
     x <- newBinding nat
     y <- newBinding nat
     output <- newBinding coordType
-    p <- newBinding player
-    p2 <- newBinding player
+    p <- newBinding playerType
+    p2 <- newBinding playerType
 
     let place (startPos:pos) =
          let middlePositions = init pos
@@ -98,10 +96,10 @@ othello = do
 
     stage_remove <- stage "remove_last_player" Noninteractive p [ [lastPlaced [p, coord [x,y]]] -@ [] ]
 
-    points <- newPredConstructor "points" [player, nat]
+    points <- newPredConstructor "points" [playerType, nat]
 
     whatever <- newBinding coordType
-    whoever <- newBinding player
+    whoever <- newBinding playerType
     xp1 <- x<+1
     stage_count <- stage "count_tiles" Noninteractive whoever -- p and p2 don't have to match
         [ [ tile [p, whatever]
@@ -111,7 +109,7 @@ othello = do
         ]
 
     lt <- initLT
-    win <- newPredConstructor "win" [player]
+    win <- newPredConstructor "win" [playerType]
     stage_winner <- stage "winner" Noninteractive whoever
         [ [ points [p, x]
           , points [p2, y]
