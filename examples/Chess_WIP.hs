@@ -50,13 +50,10 @@ chess = do
             ,[(2,0),(0,1)]
             ,[(2,1),(0,0)]
             ]
-    appliedBindings <- mapM (\cds ->
-        mapM (\(r,c) -> do
-              a <- x<+r
-              b <- y<+c
-              return $ coord [a,b]
-             ) cds
-        ) coordinates
+    let appliedBindings = map (\cds ->
+            map (\(r,c) -> coord [x<+r,y<+c]
+                ) cds
+            ) coordinates
     let impls = map horseImpl appliedBindings
     stage_play <- stage "play" Interactive p impls
 
@@ -67,5 +64,5 @@ chess = do
     let player1 = last playernames
     initialStageAndPlayer stage_play (player1)
 
-    three <- zero<+3
+    let three = zero<+3
     addToInitialBoard (tile [pnp [player1, horse],coord [three,three]])

@@ -383,10 +383,8 @@ applyVarTimes :: Const -> Var -> Int -> Var
 applyVarTimes _ x 0 = x
 applyVarTimes s x i = s [(applyVarTimes s x (i-1))]
 
-(<+) :: Var -> Int -> M Var
-(<+) v n = do
-    let appliedVar = applyVarTimes suc v n
-    return appliedVar
+(<+) :: Var -> Int -> Var
+(<+) v n = applyVarTimes suc v n
 
 
 -- * Initial values
@@ -442,11 +440,9 @@ initLT = do
 
     n <- newBinding nat
     m <- newBinding nat
-    np1 <- n<+1
-    mp1 <- m<+1
 
-    emitFact $ lt [zero, np1]
-    emitFact $ (lt [n, m]) --> (lt [np1,mp1])
+    emitFact $ lt [zero, n<+1]
+    emitFact $ (lt [n, m]) --> (lt [n<+1,m<+1])
     return lt
 
 -- | Initializes the less-than-or-equal-operator (<=)
@@ -458,11 +454,9 @@ initLTE = do
 
     n <- newBinding nat
     m <- newBinding nat
-    np1 <- n<+1
-    mp1 <- m<+1
 
     emitFact $ lte [zero, n]
-    emitFact $ (lte [n, m]) --> (lte [np1,mp1])
+    emitFact $ (lte [n, m]) --> (lte [n<+1,m<+1])
     return lte
 
 -- | Initializes the equal operator (==)
@@ -473,10 +467,8 @@ initEQ = do
     n <- newBinding nat
     emitFact $ eq [n, n]
     --     m <- newBinding nat
-    --    np1 <- n<+1
-    --    mp1 <- m<+1
     -- emitFact eq [z,z]
-    --emitFact $ (eq [n, m]) --> (eq [np1,mp1])
+    --emitFact $ (eq [n, m]) --> (eq [n<+1,m<+1])
     return eq
 
 -- | Initializes the not equal operator (/=)
@@ -486,12 +478,10 @@ initNEQ = do
 
     n <- newBinding nat
     m <- newBinding nat
-    np1 <- n<+1
-    mp1 <- m<+1
 
-    emitFact $ neq [zero, np1]
-    emitFact $ neq [np1, zero]
-    emitFact $ (neq [n, m]) --> (neq [np1,mp1])
+    emitFact $ neq [zero, n<+1]
+    emitFact $ neq [n<+1, zero]
+    emitFact $ (neq [n, m]) --> (neq [n<+1,m<+1])
     return neq
 
 

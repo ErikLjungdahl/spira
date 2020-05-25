@@ -59,14 +59,11 @@ othello = do
                           ] | n <- [3..8]
                          ]
 
-    allPossiblePositions <-
-        mapM (\positions ->
-            mapM (\pos -> do
-                x' <- x <+ fst pos
-                y' <- y <+ snd pos
-                return $ coord [x',y']
-            ) positions
-        ) coordinates
+    let allPossiblePositions =
+            map (\positions ->
+                    map (\(a,b) -> coord [x <+ a , y <+ b]
+                ) positions
+            ) coordinates
 
     let impls_play = map place (allPossiblePositions)
     stage_play <- stage "play" Interactive p impls_play
@@ -100,12 +97,11 @@ othello = do
 
     whatever <- newBinding coordType
     whoever <- newBinding playerType
-    xp1 <- x<+1
     stage_count <- stage "count_tiles" Noninteractive whoever -- p and p2 don't have to match
         [ [ tile [p, whatever]
           , points [p, x]
           ] -@
-          [ points [p, xp1] ]
+          [ points [p, x<+1] ]
         ]
 
     lt <- initLT
@@ -130,8 +126,8 @@ othello = do
     stage_count `fromFailedStageToStage` stage_winner -- When done counting, see who the winner is
     stage_winner `fromFailedStageToStage` stage_draw -- If noone wins over the other. its a draw.
 
-    three <- zero <+ 3
-    four <- zero <+ 4
+    let three = zero <+ 3
+    let four  = zero <+ 4
     mapM_ addToInitialBoard [(tile [ black, coord [three,four ] ])
                            ,(tile [ black, coord [four ,three] ])
                            ,(tile [ white, coord [three,three] ])

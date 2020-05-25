@@ -18,21 +18,19 @@ connectFour = do
 
     lt <- initLT
     maxFact  <- newFactConstructor "max" [nat]
-    six <- zero<+6 -- applyVarTimes s zero 6
-    emitFact $ maxFact [six]
+    emitFact $ maxFact [zero<+6]
 
     -- Pick a free tile and make it occupied by the player
     x <- newBinding nat
     y <- newBinding nat
     p <- newBinding playerType
     m <- newBinding nat
-    yP1 <- y<+1
     let impl = [ tile [free, coord [x,y]]
                , maxFact [m]
                , lt [y, m]
                ] -@
                [ tile [p, coord [x,y]]
-               , tile [free, coord [x,yP1]]  -- Makes the tile above free
+               , tile [free, coord [x,y<+1]]  -- Makes the tile above free
                ]
     stage_play<- stage "play" Interactive p [impl]
 
