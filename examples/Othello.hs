@@ -62,8 +62,8 @@ othello = do
     let allPossiblePositions =
             map (\positions ->
                     map (\(a,b) -> coord [x <+ a , y <+ b]
-                ) positions
-            ) coordinates
+                        ) positions
+                ) coordinates
 
     let impls_play = map place (allPossiblePositions)
     stage_play <- stage "play" Interactive p impls_play
